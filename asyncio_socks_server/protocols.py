@@ -233,8 +233,8 @@ class LocalTCP(asyncio.Protocol):
                     self.stage = self.STAGE_UDP_ASSOCIATE
 
                     self.config.ACCESS_LOG and access_logger.info(
-                        f"Established UDP relay for {self.peername} "
-                        f"at {bind_addr,bind_port}"
+                        f"Established UDP relay for Socks5 client {self.peername} "
+                        f"at local side {bind_addr,bind_port}"
                     )
             else:
                 self.transport.write(self.gen_reply(SocksRep.COMMAND_NOT_SUPPORTED))
@@ -353,11 +353,11 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.sockname = transport.get_extra_info("sockname")
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalUDP endpoint at {self.sockname}"
+            f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there"
         )
 
     @staticmethod
-    def parse_udp_request_header(data: bytes):
+    def parse_udp_request_header(data: bytes, config):
         """Parse the header of UDP request.
 
         Each UDP datagram carries a UDP request header formed as follows: ::
@@ -401,6 +401,9 @@ class LocalUDP(asyncio.DatagramProtocol):
         length += 2
         if length > len(data):
             raise HeaderParseError("Header is too short")
+        config.ACCESS_LOG and access_logger.info(
+            f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
+        )
         return RSV, FRAG, ATYP, DST_ADDR, DST_PORT, length
 
     def datagram_received(self, data: bytes, local_host_port: Tuple[str, int]):
@@ -423,7 +426,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 DST_ADDR,
                 DST_PORT,
                 header_length,
-            ) = self.parse_udp_request_header(data)
+            ) = self.parse_udp_request_header(data, self.config)
 
             if local_host_port not in self.remote_udp_table:
                 loop = asyncio.get_event_loop()
@@ -476,7 +479,7 @@ class RemoteUDP(asyncio.DatagramProtocol):
             self.transport.sendto(data, host_port)
 
     @staticmethod
-    def gen_udp_reply_header(remote_host_port: Tuple[str, int]):
+    def gen_udp_reply_header(remote_host_port: Tuple[str, int], config):
         """Generate the header of UDP reply.
 
         When a UDP relay server receives a reply datagram from a remote
@@ -506,11 +509,14 @@ class RemoteUDP(asyncio.DatagramProtocol):
             DST_ADDR = len(remote_host).to_bytes(1, "big") + remote_host.encode("UTF-8")
         ATYP = ATYP.to_bytes(1, "big")
         DST_PORT = remote_port.to_bytes(2, "big")
+        config.ACCESS_LOG and access_logger.debug(
+            f'Outcoming UDP request to {remote_host}:{remote_port}'
+        )
         return RSV + FRAG + ATYP + DST_ADDR + DST_PORT
 
     def datagram_received(self, data: bytes, remote_host_port: Tuple[str, int]) -> None:
         try:
-            header = self.gen_udp_reply_header(remote_host_port)
+            header = self.gen_udp_reply_header(remote_host_port, self.config)
             self.local_udp.write(header + data, self.local_host_port)
         except Exception as e:
             error_logger.warning(
