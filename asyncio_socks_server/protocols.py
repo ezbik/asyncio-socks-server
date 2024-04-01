@@ -174,6 +174,9 @@ class LocalTCP(asyncio.Protocol):
             # Step 2.2
             # The server handles the command and returns a reply.
             if CMD == SocksCommand.CONNECT:
+                self.config.ACCESS_LOG and access_logger.info(
+                    f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT}'
+                )
                 try:
                     loop = asyncio.get_event_loop()
                     task = loop.create_connection(
