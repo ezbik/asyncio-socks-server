@@ -24,6 +24,7 @@ DEFAULT_CONFIG = {
     "STRICT": False,
     "DEBUG": False,
     "USERS": {},
+    "RESOLVER": "",
 }
 
 
@@ -35,6 +36,7 @@ class Config(dict):
     STRICT: bool
     DEBUG: bool
     USERS: dict
+    RESOLVER: str
 
     def __init__(self):
         super().__init__({**DEFAULT_CONFIG})
