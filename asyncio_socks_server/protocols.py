@@ -21,6 +21,7 @@ from asyncio_socks_server.logger import access_logger, error_logger, logger
 from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 
+import aiodns
 
 class LocalTCP(asyncio.Protocol):
     STAGE_NEGOTIATE = 0
@@ -171,6 +172,9 @@ class LocalTCP(asyncio.Protocol):
                 raise NoAtypAllowed(f"Received unsupported ATYP value: {ATYP}")
             DST_PORT = int.from_bytes(await self.stream_reader.readexactly(2), "big")
 
+            async def query(name, query_type):
+                return await resolver.query(name, query_type)
+
             # Step 2.2
             # The server handles the command and returns a reply.
             if CMD == SocksCommand.CONNECT:
@@ -180,12 +184,14 @@ class LocalTCP(asyncio.Protocol):
 
 
                 try:
-                    if ATYP == SocksAtyp.DOMAIN:
-                        pass
-                        print(',,,,,,,,resolving TCP remote name to IP')
-                        #DST_ADDR='1.1.1.1'
-
                     loop = asyncio.get_event_loop()
+                    if ATYP == SocksAtyp.DOMAIN:
+                        print(f',,,,,,,,resolving TCP remote name {DST_ADDR}')
+                        resolver = aiodns.DNSResolver(loop=loop)
+                        coro = query(DST_ADDR , 'A')
+                        DST_ADDR = loop.run_until_complete(coro)
+                        print(f',,,,,,,,resolved to {DST_ADDR}')
+
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
                     )
