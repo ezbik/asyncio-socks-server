@@ -177,7 +177,14 @@ class LocalTCP(asyncio.Protocol):
                 self.config.ACCESS_LOG and access_logger.info(
                     f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT}'
                 )
+
+
                 try:
+                    if ATYP == SocksAtyp.DOMAIN:
+                        pass
+                        print(',,,,,,,,resolving TCP remote name to IP')
+                        #DST_ADDR='1.1.1.1'
+
                     loop = asyncio.get_event_loop()
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
@@ -407,6 +414,11 @@ class LocalUDP(asyncio.DatagramProtocol):
         config.ACCESS_LOG and access_logger.info(
             f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
         )
+
+        if ATYP == SocksAtyp.DOMAIN:
+            pass
+            print(',,,,,,,,resolving UDP remote name to IP')
+
         return RSV, FRAG, ATYP, DST_ADDR, DST_PORT, length
 
     def datagram_received(self, data: bytes, local_host_port: Tuple[str, int]):
