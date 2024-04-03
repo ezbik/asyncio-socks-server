@@ -31,6 +31,7 @@ def query(resolver, name, query_type):
         print(e)
 
 def acl(config, DST_ADDR):
+    if config.DENY_RAW_IP_ADDRESSES==True and re.se
     for banned_dst in config.BANNED_DST :
         if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
             return -1

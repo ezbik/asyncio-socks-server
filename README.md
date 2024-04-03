@@ -66,6 +66,7 @@ You can also list other options in the config file instead of the command：
     "bad.com",
     "porn.com"
     ],
+  "DENY_RAW_IP_ADDRESSES": true,
   "RESOLVER": "8.8.8.8",
   "USERS": {
     "username1": "password1",

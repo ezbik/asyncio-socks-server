@@ -27,6 +27,7 @@ DEFAULT_CONFIG = {
     "DEBUG": False,
     "USERS": {},
     "BANNED_DST": []
+    "DENY_RAW_IP_ADDRESSES": False,
     "RESOLVER": "",
 }
 
