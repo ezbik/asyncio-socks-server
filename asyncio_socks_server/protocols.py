@@ -196,9 +196,10 @@ class LocalTCP(asyncio.Protocol):
                     loop = asyncio.get_event_loop()
 
                     if ATYP == SocksAtyp.DOMAIN:
-                        if acl(self.config, DST_ADDR) == -1:
-                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
                         HNAME=DST_ADDR
+
+                        if acl(self.config, HNAME) == -1:
+                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] resolving remote name {HNAME}'
                         )
@@ -445,6 +446,8 @@ class LocalUDP(asyncio.DatagramProtocol):
 
         if ATYP == SocksAtyp.DOMAIN:
             HNAME=DST_ADDR
+            if acl(config, HNAME) == -1:
+                raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
             config.ACCESS_LOG and access_logger.debug(
                 f'[UDP] resolving remote name {HNAME}'
             )
