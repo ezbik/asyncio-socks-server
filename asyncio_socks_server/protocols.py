@@ -32,7 +32,6 @@ def query(resolver, name, query_type):
 
 def acl(config, DST_ADDR):
     for banned_dst in config.BANNED_DST :
-        print(banned_dst, DST_ADDR)
         if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
             return -1
 
