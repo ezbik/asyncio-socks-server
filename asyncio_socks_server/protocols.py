@@ -32,6 +32,7 @@ def query(resolver, name, query_type):
 
 def acl(config, DST_ADDR):
     for banned_dst in config.BANNED_DST :
+        print(banned_dst, DST_ADDR)
         if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
             return -1
 
@@ -196,6 +197,8 @@ class LocalTCP(asyncio.Protocol):
                     loop = asyncio.get_event_loop()
 
                     if ATYP == SocksAtyp.DOMAIN:
+                        if acl(self.config, DST_ADDR) == -1:
+                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
                         HNAME=DST_ADDR
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] resolving remote name {HNAME}'
@@ -206,12 +209,10 @@ class LocalTCP(asyncio.Protocol):
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] {HNAME} resolved to {DST_ADDR}'
                         )
-                        if acl(DST_ADDR) == -1:
-                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
 
-                    if acl(DST_ADDR) == -1:
+                    if acl(self.config, DST_ADDR) == -1:
                         raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
 
                     task = loop.create_connection(
@@ -224,12 +225,12 @@ class LocalTCP(asyncio.Protocol):
                 except socket.gaierror:
                     self.transport.write(self.gen_reply(SocksRep.HOST_UNREACHABLE))
                     raise CommandExecError("Host is unreachable") from None
-                except Exception:
+                except Exception as e:
                     self.transport.write(
                         self.gen_reply(SocksRep.GENERAL_SOCKS_SERVER_FAILURE)
                     )
                     raise CommandExecError(
-                        "General socks server failure occurred"
+                        f"General socks server failure occurred {e}"
                     ) from None
                 else:
                     self.remote_tcp = remote_tcp

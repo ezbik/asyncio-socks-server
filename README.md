@@ -65,7 +65,7 @@ You can also list other options in the config file instead of the command：
   "BANNED_DST": [
     "bad.com",
     "porn.com"
-    ]
+    ],
   "RESOLVER": "8.8.8.8",
   "USERS": {
     "username1": "password1",
