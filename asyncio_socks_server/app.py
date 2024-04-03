@@ -58,6 +58,9 @@ class SocksServer:
         logger.info(
             f"Server launched on" f" {self.config.LISTEN_HOST,self.config.LISTEN_PORT}"
         )
+        logger.info(
+            f'Resolving hostnames via {self.config.RESOLVER or "OS resolver"}'
+        )
 
         self.loop.run_forever()
         self.loop.close()
