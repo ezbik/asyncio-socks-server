@@ -20,6 +20,7 @@ from asyncio_socks_server.exceptions import (
 from asyncio_socks_server.logger import access_logger, error_logger, logger
 from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
+import re
 
 def query(resolver, name, query_type):
     try:
@@ -28,6 +29,11 @@ def query(resolver, name, query_type):
             return rdata.to_text()
     except Exception as e:
         print(e)
+
+def acl(config, DST_ADDR):
+    for banned_dst in config.BANNED_DST :
+        if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
+            return -1
 
 class LocalTCP(asyncio.Protocol):
     STAGE_NEGOTIATE = 0
@@ -185,6 +191,7 @@ class LocalTCP(asyncio.Protocol):
                     f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT}'
                 )
 
+
                 try:
                     loop = asyncio.get_event_loop()
 
@@ -199,6 +206,13 @@ class LocalTCP(asyncio.Protocol):
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] {HNAME} resolved to {DST_ADDR}'
                         )
+                        if acl(DST_ADDR) == -1:
+                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
+
+                    # Now DST_ADDR is Ipv4/Ipv6. 
+
+                    if acl(DST_ADDR) == -1:
+                        raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
 
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT

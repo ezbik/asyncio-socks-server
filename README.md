@@ -62,6 +62,10 @@ You can also list other options in the config file instead of the command：
   "ACCESS_LOG": true,
   "DEBUG": true,
   "STRICT": true,
+  "BANNED_DST": [
+    "bad.com",
+    "porn.com"
+    ]
   "RESOLVER": "8.8.8.8",
   "USERS": {
     "username1": "password1",

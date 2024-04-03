@@ -26,6 +26,7 @@ DEFAULT_CONFIG = {
     "STRICT": False,
     "DEBUG": False,
     "USERS": {},
+    "BANNED_DST": []
     "RESOLVER": "",
 }
 
@@ -39,6 +40,7 @@ class Config(dict):
     DEBUG: bool
     USERS: dict
     RESOLVER: str
+    BANNED_DST: list
 
     def __init__(self):
         super().__init__({**DEFAULT_CONFIG})
