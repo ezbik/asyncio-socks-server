@@ -21,17 +21,13 @@ from asyncio_socks_server.logger import access_logger, error_logger, logger
 from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 
-import dns.resolver
-
-my_resolver = dns.resolver.Resolver()
-my_resolver.nameservers = ['8.8.8.8']
-
-def query(name, query_type):
-    answers = my_resolver.query(name, query_type)
-    for rdata in answers: 
-        return rdata.to_text()
-
-
+def query(resolver, name, query_type):
+    try:
+        answers = resolver.query(name, query_type)
+        for rdata in answers: 
+            return rdata.to_text()
+    except Exception as e:
+        print(e)
 
 class LocalTCP(asyncio.Protocol):
     STAGE_NEGOTIATE = 0
@@ -197,7 +193,7 @@ class LocalTCP(asyncio.Protocol):
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] resolving remote name {HNAME}'
                         )
-                        DST_ADDR = query(HNAME , 'A')
+                        DST_ADDR = query(self.config.resolver, HNAME , 'A')
                         if not DST_ADDR:
                             raise CommandExecError("Can't resolve hostname {HNAME}")
                         self.config.ACCESS_LOG and access_logger.debug(
@@ -438,7 +434,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             config.ACCESS_LOG and access_logger.debug(
                 f'[UDP] resolving remote name {HNAME}'
             )
-            DST_ADDR = query(HNAME , 'A')
+            DST_ADDR = query(config.resolver, HNAME , 'A')
             if not DST_ADDR:
                 raise HeaderParseError("Can't resolve hostname {HNAME}")
             config.ACCESS_LOG and access_logger.debug(

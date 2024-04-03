@@ -5,6 +5,8 @@ from typing import Any, Union
 from asyncio_socks_server.utils import load_dict_from_json_file_location, str_to_bool
 from asyncio_socks_server.values import SocksAuthMethod
 
+import dns.resolver
+
 SOCKS_SERVER_PREFIX = "AIOSS_"
 
 BASE_LOGO = """
@@ -105,5 +107,11 @@ class Config(dict):
             config.update(cfg)
 
         config = dict(filter(lambda i: i[0].isupper(), config.items()))
+
+        resolver = dns.resolver.Resolver()
+        if config['RESOLVER']:
+            resolver.nameservers = [ config['RESOLVER'] ]
+        
+        config['resolver']=resolver
 
         self.update(config)

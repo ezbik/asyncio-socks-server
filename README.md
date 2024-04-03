@@ -62,6 +62,7 @@ You can also list other options in the config file instead of the command：
   "ACCESS_LOG": true,
   "DEBUG": true,
   "STRICT": true,
+  "RESOLVER": "8.8.8.8",
   "USERS": {
     "username1": "password1",
     "username2": "password2",
