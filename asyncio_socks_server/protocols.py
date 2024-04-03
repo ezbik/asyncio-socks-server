@@ -31,17 +31,6 @@ def query(resolver, name, query_type):
         print(e)
 
 def acl(config, DST_ADDR):
-    def is_ipv4(address):
-        ipv4_pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-        return re.match(ipv4_pattern, address) is not None
-
-    def is_ipv6(address):
-        ipv6_pattern = r'^(([0-9a-fA-F]{1,4}):){7}([0-9a-fA-F]{1,4})$'
-        return re.match(ipv6_pattern, address) is not None
-
-    if config.DENY_RAW_IP_ADDRESSES==True and ( is_ipv4(DST_ADDR) or is_ipv6(DST_ADDR) ):
-        return -1
-
     for banned_dst in config.BANNED_DST :
         if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
             return -1
@@ -220,11 +209,11 @@ class LocalTCP(asyncio.Protocol):
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] {HNAME} resolved to {DST_ADDR}'
                         )
+                    else:
+                        if self.config.DENY_RAW_IP_ADDRESSES == True:
+                            raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
-
-                    if acl(self.config, DST_ADDR) == -1:
-                        raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
 
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
@@ -468,9 +457,9 @@ class LocalUDP(asyncio.DatagramProtocol):
             config.ACCESS_LOG and access_logger.debug(
                 f'[UDP] {HNAME} resolved to {DST_ADDR}'
             )
-
-        if acl(config, HNAME) == -1:
-            raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
+        else:
+            if config.DENY_RAW_IP_ADDRESSES == True:
+                raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
         return RSV, FRAG, ATYP, DST_ADDR, DST_PORT, length
 
