@@ -40,8 +40,9 @@ class Config(dict):
     STRICT: bool
     DEBUG: bool
     USERS: dict
-    RESOLVER: str
     BANNED_DST: list
+    DENY_RAW_IP_ADDRESSES: bool
+    RESOLVER: str
 
     def __init__(self):
         super().__init__({**DEFAULT_CONFIG})
