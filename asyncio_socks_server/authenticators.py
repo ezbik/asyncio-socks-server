@@ -55,7 +55,10 @@ class NoAuthenticator(BaseAuthenticator):
     METHOD = SocksAuthMethod.NO_AUTH
 
     async def authenticate(self):
-        pass
+        CLIENT_SRC_ADDR = self._write_transport.get_extra_info("peername")[0]
+        if self._config.WHITELISTED_CLIENTS:
+            if not CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
+                raise AuthenticationError(f"client {CLIENT_SRC_ADDR} not allowed")
 
 
 class UPAuthenticator(BaseAuthenticator):
