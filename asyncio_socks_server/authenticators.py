@@ -108,11 +108,15 @@ class UPAuthenticator(BaseAuthenticator):
                 f"Received unsupported user/password authentication version {VER}"
             )
 
+        CLIENT_SRC_ADDR = self._write_transport.get_extra_info("peername")[0]
+
         ULEN = int.from_bytes(await self._stream_reader.readexactly(1), "big")
         UNAME = (await self._stream_reader.readexactly(ULEN)).decode("ASCII")
         PLEN = int.from_bytes(await self._stream_reader.readexactly(1), "big")
         PASSWD = (await self._stream_reader.readexactly(PLEN)).decode("ASCII")
-        if self.verify_user(UNAME, PASSWD):
+        if CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
+            self._write_transport.write(b"\x01\x00")
+        elif self.verify_user(UNAME, PASSWD):
             self._write_transport.write(b"\x01\x00")
         else:
             self._write_transport.write(b"\x01\x01")
