@@ -75,6 +75,11 @@ def acl(config, DST_ADDR):
         if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
             return -1
 
+def src_acl(config, SRC_ADDR):
+    for whitelisted_client in config.WHITELISTED_CLIENTS:
+        if whitelisted_client == SRC_ADDR:
+            return 1
+
 class LocalTCP(asyncio.Protocol):
     STAGE_NEGOTIATE = 0
     STAGE_CONNECT = 1
@@ -215,6 +220,7 @@ class LocalTCP(asyncio.Protocol):
 
             # Step 1.3
             # The client and the server enter a method-specific sub-negotiation.
+            CLIENT_SRC_ADDR='1.1.1.1'
             await authenticator.authenticate()
 
             # Step 2.1

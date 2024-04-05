@@ -54,6 +54,7 @@ in json format with the `--config` option.
 You can also list other options in the config file instead of the command：
 
 * MAX_DL_SPEED : max download speed, KB/s
+* WHITELISTED_CLIENTS: array of whitelisted clients
 
 
 `config.json`:
@@ -72,6 +73,10 @@ You can also list other options in the config file instead of the command：
   "DENY_RAW_IP_ADDRESSES": true,
   "RESOLVER": "8.8.8.8",
   "MAX_DL_SPEED": 500,
+  "WHITELISTED_CLIENTS": [
+    "192.168.100.100",
+    "192.168.100.101",
+    ],
   "USERS": {
     "username1": "password1",
     "username2": "password2",

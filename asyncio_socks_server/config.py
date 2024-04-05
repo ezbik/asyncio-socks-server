@@ -29,6 +29,7 @@ DEFAULT_CONFIG = {
     "BANNED_DST": [],
     "DENY_RAW_IP_ADDRESSES": False,
     "MAX_DL_SPEED": 0,
+    "WHITELISTED_CLIENTS": [],
     "RESOLVER": "",
 }
 
@@ -44,6 +45,7 @@ class Config(dict):
     BANNED_DST: list
     DENY_RAW_IP_ADDRESSES: bool
     MAX_DL_SPEED: int
+    WHITELISTED_CLIENTS: list
     RESOLVER: str
 
     def __init__(self):
