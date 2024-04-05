@@ -62,6 +62,10 @@ class SocksServer:
             f'Resolving hostnames via {self.config.RESOLVER or "OS resolver"}'
         )
 
+        logger.info(
+            f'Max download speed: {self.config.MAX_DL_SPEED or Unlimited} KB/s'
+        )
+
         self.loop.run_forever()
         self.loop.close()
 

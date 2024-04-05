@@ -53,6 +53,9 @@ is specified, you need to provide a config file containing the usernames and pas
 in json format with the `--config` option.
 You can also list other options in the config file instead of the command：
 
+* MAX_DL_SPEED : max download speed, KB/s
+
+
 `config.json`:
 ```json
 {
@@ -68,6 +71,7 @@ You can also list other options in the config file instead of the command：
     ],
   "DENY_RAW_IP_ADDRESSES": true,
   "RESOLVER": "8.8.8.8",
+  "MAX_DL_SPEED": 500,
   "USERS": {
     "username1": "password1",
     "username2": "password2",

@@ -21,6 +21,46 @@ from asyncio_socks_server.logger import access_logger, error_logger, logger
 from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 import re
+import time
+
+class SpeedAnalyzer:
+    def __init__(self):
+        self.data = []  # Data structure to store (timestamp, amount_of_bytes) tuples
+
+    def add_data(self, timestamp, amount_of_bytes):
+        self.data.append((timestamp, amount_of_bytes))
+
+    def calculate_average_speed(self):
+        duration=3
+        current_time = time.time()
+        start_time = current_time - duration
+
+        total_bytes = 0
+        count = 0
+
+        if len(self.data)>1000:
+            self.cleanup_data()
+
+        for timestamp, bytes_ in self.data[::-1]:
+            if timestamp < start_time :
+                break
+
+            total_bytes += bytes_
+            count += 1
+        if count == 0:
+            return 0
+        else:
+            return round(total_bytes / ( duration * 1000 * 1.1 ) ) 
+            #Average Kbytes/s
+
+    def cleanup_data(self):
+            current_time = time.time()
+            ten_seconds_ago = current_time - 10
+            self.data = [(ts, bytes_) for ts, bytes_ in self.data if ts >= ten_seconds_ago]
+
+DL=SpeedAnalyzer()
+UL=SpeedAnalyzer()
+
 
 def query(resolver, name, query_type):
     try:
@@ -60,7 +100,19 @@ class LocalTCP(asyncio.Protocol):
 
     def write(self, data):
         if not self.transport.is_closing():
-            self.transport.write(data)
+            global DL
+            DL.add_data( time.time() , len(data))
+            DL_SPEED = DL.calculate_average_speed()
+            MAX_DL_SPEED=self.config.MAX_DL_SPEED
+            if MAX_DL_SPEED and DL_SPEED > MAX_DL_SPEED :
+                SL=0.2
+                CHUNKSIZE=round( len(data) / 8 )
+                for data_chunk in [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]:
+                    time.sleep(SL)
+                    if not self.transport.is_closing():
+                        self.transport.write(data_chunk)
+            else:
+                self.transport.write(data)
 
     def connection_made(self, transport):
         self.transport = transport
