@@ -55,6 +55,7 @@ class NoAuthenticator(BaseAuthenticator):
     METHOD = SocksAuthMethod.NO_AUTH
 
     async def authenticate(self):
+        # if METHOD 0 is configured but only some IP's are allowed:
         CLIENT_SRC_ADDR = self._write_transport.get_extra_info("peername")[0]
         if self._config.WHITELISTED_CLIENTS:
             if not CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
@@ -111,13 +112,15 @@ class UPAuthenticator(BaseAuthenticator):
                 f"Received unsupported user/password authentication version {VER}"
             )
 
-        CLIENT_SRC_ADDR = self._write_transport.get_extra_info("peername")[0]
 
         ULEN = int.from_bytes(await self._stream_reader.readexactly(1), "big")
         UNAME = (await self._stream_reader.readexactly(ULEN)).decode("ASCII")
         PLEN = int.from_bytes(await self._stream_reader.readexactly(1), "big")
         PASSWD = (await self._stream_reader.readexactly(PLEN)).decode("ASCII")
+        CLIENT_SRC_ADDR = self._write_transport.get_extra_info("peername")[0]
         if CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
+            # the case when client sent user+password 
+            # .. despite negotiated METHOD 0
             self._write_transport.write(b"\x01\x00")
             return UNAME
         elif self.verify_user(UNAME, PASSWD):
