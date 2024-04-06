@@ -5,7 +5,7 @@ from asyncio.streams import StreamReader
 from socket import AF_INET, AF_INET6, inet_ntop, inet_pton
 from typing import Optional, Tuple
 
-from asyncio_socks_server.authenticators import AUTHENTICATORS_CLS_LIST
+from asyncio_socks_server.authenticators import AUTHENTICATORS_CLS_LIST, NoAuthenticator
 from asyncio_socks_server.config import Config
 from asyncio_socks_server.exceptions import (
     AuthenticationError,
@@ -208,9 +208,7 @@ class LocalTCP(asyncio.Protocol):
 
             CLIENT_SRC_ADDR = self.transport.get_extra_info("peername")[0]
             if CLIENT_SRC_ADDR in self.config.WHITELISTED_CLIENTS:
-                #self.authenticator_cls = NoAuthenticator
-                #self.authenticator_cls = AUTHENTICATORS_CLS_LIST[0]
-                self.authenticator_cls = AUTHENTICATORS_CLS_LIST[0]
+                self.authenticator_cls = NoAuthenticator
 
             authenticator = self.authenticator_cls(
                 self.stream_reader, self.transport, self.config
