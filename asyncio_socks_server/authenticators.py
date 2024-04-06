@@ -119,8 +119,10 @@ class UPAuthenticator(BaseAuthenticator):
         PASSWD = (await self._stream_reader.readexactly(PLEN)).decode("ASCII")
         if CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
             self._write_transport.write(b"\x01\x00")
+            return UNAME
         elif self.verify_user(UNAME, PASSWD):
             self._write_transport.write(b"\x01\x00")
+            return UNAME
         else:
             self._write_transport.write(b"\x01\x01")
             raise AuthenticationError("USERNAME or PASSWORD is uncorrected")
