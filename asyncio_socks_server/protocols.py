@@ -205,6 +205,11 @@ class LocalTCP(asyncio.Protocol):
 
             # Step 1.2
             # The server selects a method and sends selection message.
+
+            CLIENT_SRC_ADDR = self.transport.get_extra_info("peername")[0]
+            if CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
+                self.authenticator_cls = NoAuthenticator
+
             authenticator = self.authenticator_cls(
                 self.stream_reader, self.transport, self.config
             )
