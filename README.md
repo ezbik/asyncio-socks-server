@@ -54,7 +54,7 @@ in json format with the `--config` option.
 You can also list other options in the config file instead of the command：
 
 * MAX_DL_SPEED : max download speed, KB/s
-* WHITELISTED_CLIENTS: array of IP's of whitelisted clients; they don't need to specify Socks5 Login:Password
+* WHITELISTED_CLIENTS: array of IP's of whitelisted clients; In case of METHOD 0: if whitelisted clients are allowed, other clients are denied.  In case of METHOD 2: whitelisted clients don't need to specify Socks5 Login:Password or they can specify any Login:Password.
 
 
 `config.json`:
