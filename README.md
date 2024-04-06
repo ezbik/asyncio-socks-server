@@ -169,6 +169,10 @@ To disable the compromise described above, you can specify the `--strict` option
 asyncio_socks_server --strict
 ```
 
+## Changelog
+
+* 2024-04-06 added Download speedlimit, whitelisted clients, domains ACL, custom DNS resolver
+
 ## Reference
 
 - [RFC1928](https://www.ietf.org/rfc/rfc1928.txt)
