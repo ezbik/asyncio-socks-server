@@ -207,8 +207,10 @@ class LocalTCP(asyncio.Protocol):
             # The server selects a method and sends selection message.
 
             CLIENT_SRC_ADDR = self.transport.get_extra_info("peername")[0]
-            if CLIENT_SRC_ADDR in self._config.WHITELISTED_CLIENTS:
-                self.authenticator_cls = NoAuthenticator
+            if CLIENT_SRC_ADDR in self.config.WHITELISTED_CLIENTS:
+                #self.authenticator_cls = NoAuthenticator
+                #self.authenticator_cls = AUTHENTICATORS_CLS_LIST[0]
+                self.authenticator_cls = AUTHENTICATORS_CLS_LIST[0]
 
             authenticator = self.authenticator_cls(
                 self.stream_reader, self.transport, self.config
@@ -221,7 +223,11 @@ class LocalTCP(asyncio.Protocol):
             # Step 1.3
             # The client and the server enter a method-specific sub-negotiation.
 
-            await authenticator.authenticate()
+            USERNAME = await authenticator.authenticate()
+
+            self.config.ACCESS_LOG and access_logger.info(
+                f'Authenticated user {USERNAME or "[no username specified]"} from {CLIENT_SRC_ADDR}'
+            )
 
             # Step 2.1
             # The client send a socks request.
