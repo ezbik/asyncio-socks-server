@@ -277,8 +277,11 @@ class LocalTCP(asyncio.Protocol):
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
 
+                    RelayHost='127.0.0.1'
+                    RelayPort='1080'
+
                     task = loop.create_connection(
-                        lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
+                        lambda: RemoteTCP_relay(self, self.config, DST_ADDR, DST_PORT), RelayHost, RelayPort
                     )
                     remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
                 except ConnectionRefusedError:
@@ -386,8 +389,8 @@ class LocalTCP(asyncio.Protocol):
         )
 
 
-class RemoteTCP(asyncio.Protocol):
-    def __init__(self, local_tcp, config: Config):
+class RemoteTCP_relay(asyncio.Protocol):
+    def __init__(self, local_tcp, config: Config, DST_ADDR, DST_PORT):
         self.local_tcp = local_tcp
         self.config = config
         self.peername = None
@@ -403,8 +406,14 @@ class RemoteTCP(asyncio.Protocol):
         self.peername = transport.get_extra_info("peername")
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made RemoteTCP connection to {self.peername}"
+            f"Made RemoteTCP_relay connection to {self.peername}"
         )
+        HEADER=f'MPROXY TCP {DST_ADDR} {DST_PORT}\r\n'.encode()
+        if not self.transport.is_closing():
+            self.transport.write(HEADER)
+            self.config.ACCESS_LOG and access_logger.debug(
+                f"..written relaying HEADER {HEADER}"
+            )
 
     def data_received(self, data):
         self.local_tcp.write(data)
@@ -432,7 +441,7 @@ class RemoteTCP(asyncio.Protocol):
         self.local_tcp.close()
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Closed RemoteTCP connection to {self.peername}"
+            f"Closed RemoteTCP_relay connection to {self.peername}"
         )
 
 
@@ -442,7 +451,6 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.config = config
         self.transport = None
         self.sockname = None
-        self.remote_udp_table = {}
         self.is_closing = False
 
     def write(self, data, port_addr):
@@ -547,16 +555,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 header_length,
             ) = self.parse_udp_request_header(data, self.config)
 
-            if local_host_port not in self.remote_udp_table:
-                loop = asyncio.get_event_loop()
-                task = loop.create_datagram_endpoint(
-                    lambda: RemoteUDP(self, local_host_port, self.config),
-                    local_addr=("0.0.0.0", 0),
-                )
-                _, remote_udp = await asyncio.wait_for(task, 5)
-                self.remote_udp_table[local_host_port] = remote_udp
-            remote_udp = self.remote_udp_table[local_host_port]
-            remote_udp.write(data[header_length:], (DST_ADDR, DST_PORT))
+            relay_tcp.write(data[header_length:] )
         except Exception as e:
             error_logger.warning(
                 f"{e} during relaying the request from {local_host_port}"
@@ -568,94 +567,10 @@ class LocalUDP(asyncio.DatagramProtocol):
             return
         self.is_closing = True
         self.transport and self.transport.close()
-        for local_host_port in self.remote_udp_table:
-            self.remote_udp_table[local_host_port].close()
-
+        relay_tcp.close
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalUDP endpoint at {self.sockname}"
         )
 
 
-class RemoteUDP(asyncio.DatagramProtocol):
-    def __init__(self, local_udp, local_host_port, config: Config):
-        self.local_udp = local_udp
-        self.local_host_port = local_host_port
-        self.config = config
-        self.transport = None
-        self.sockname = None
-        self.is_closing = False
-
-    def connection_made(self, transport) -> None:
-        self.transport = transport
-        self.sockname = transport.get_extra_info("sockname")
-
-        self.config.ACCESS_LOG and access_logger.debug(
-            f"Made RemoteUDP endpoint at {self.sockname}"
-        )
-
-    def write(self, data, host_port):
-        if not self.transport.is_closing():
-            self.transport.sendto(data, host_port)
-
-    @staticmethod
-    def gen_udp_reply_header(remote_host_port: Tuple[str, int], config):
-        """Generate the header of UDP reply.
-
-        When a UDP relay server receives a reply datagram from a remote
-        host, it MUST encapsulate that datagram using the UDP request
-        header: ::
-
-            +----+------+------+----------+----------+----------+
-            |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
-            +----+------+------+----------+----------+----------+
-            | 2  |  1   |  1   | Variable |    2     | Variable |
-            +----+------+------+----------+----------+----------+
-
-        and any authentication-method-dependent encapsulation.
-
-        :param remote_host_port: A tuple of host and port
-        :return: The bytes of the generated header
-        """
-
-        RSV, FRAG = b"\x00\x00", b"\x00"
-        remote_host, remote_port = remote_host_port
-        ATYP = get_socks_atyp_from_host(remote_host)
-        if ATYP == SocksAtyp.IPV4:
-            DST_ADDR = inet_pton(AF_INET, remote_host)
-        elif ATYP == SocksAtyp.IPV6:
-            DST_ADDR = inet_pton(AF_INET6, remote_host)
-        else:  # ATYP == SocksAtyp.DOMAIN
-            DST_ADDR = len(remote_host).to_bytes(1, "big") + remote_host.encode("UTF-8")
-        ATYP = ATYP.to_bytes(1, "big")
-        DST_PORT = remote_port.to_bytes(2, "big")
-        config.ACCESS_LOG and access_logger.debug(
-            f'Outcoming UDP request to {remote_host}:{remote_port}'
-        )
-        return RSV + FRAG + ATYP + DST_ADDR + DST_PORT
-
-    def datagram_received(self, data: bytes, remote_host_port: Tuple[str, int]) -> None:
-        try:
-            header = self.gen_udp_reply_header(remote_host_port, self.config)
-            self.local_udp.write(header + data, self.local_host_port)
-        except Exception as e:
-            error_logger.warning(
-                f"{e} during relaying the response from {remote_host_port}"
-            )
-            return
-
-    def close(self):
-        if self.is_closing:
-            return
-        self.is_closing = True
-        self.transport and self.transport.close()
-        self.local_udp = None
-
-        self.config.ACCESS_LOG and access_logger.debug(
-            f"Closed RemoteUDP endpoint at {self.sockname}"
-        )
-
-    def error_received(self, exc):
-        self.close()
-
-    def connection_lost(self, exc):
-        self.close()
+#class RemoteUDP(asyncio.DatagramProtocol):
