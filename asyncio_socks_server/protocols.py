@@ -396,6 +396,8 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.peername = None
         self.transport = None
         self.is_closing = False
+        self.DST_ADDR=DST_ADDR
+        self.DST_PORT=DST_PORT
 
     def write(self, data):
         if not self.transport.is_closing():
@@ -408,7 +410,7 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Made RemoteTCP_relay connection to {self.peername}"
         )
-        HEADER=f'MPROXY TCP {DST_ADDR} {DST_PORT}\r\n'.encode()
+        HEADER=f'MPROXY TCP {self.DST_ADDR} {self.DST_PORT}\r\n'.encode()
         if not self.transport.is_closing():
             self.transport.write(HEADER)
             self.config.ACCESS_LOG and access_logger.debug(
