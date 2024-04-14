@@ -100,17 +100,20 @@ class LocalTCP(asyncio.Protocol):
 
     def write(self, data):
         if not self.transport.is_closing():
-            global DL
-            DL.add_data( time.time() , len(data))
-            DL_SPEED = DL.calculate_average_speed()
             MAX_DL_SPEED=self.config.MAX_DL_SPEED
-            if MAX_DL_SPEED and DL_SPEED > MAX_DL_SPEED :
-                SL=0.2
-                CHUNKSIZE=round( len(data) / 8 )
-                for data_chunk in [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]:
-                    time.sleep(SL)
-                    if not self.transport.is_closing():
-                        self.transport.write(data_chunk)
+            if MAX_DL_SPEED:
+                global DL
+                DL.add_data( time.time() , len(data))
+                DL_SPEED = DL.calculate_average_speed()
+                if DL_SPEED > MAX_DL_SPEED :
+                    SL=0.2
+                    CHUNKSIZE=round( len(data) / 8 )
+                    for data_chunk in [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]:
+                        time.sleep(SL)
+                        if not self.transport.is_closing():
+                            self.transport.write(data_chunk)
+                else:
+                    self.transport.write(data)
             else:
                 self.transport.write(data)
 
