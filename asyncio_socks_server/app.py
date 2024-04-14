@@ -66,6 +66,10 @@ class SocksServer:
             f'Max download speed: {self.config.MAX_DL_SPEED or "Unlimited"} KB/s'
         )
 
+        logger.info(
+            f'Relaying to MPROXY relay at {self.config.RELAY_HOST}:{self.config.RELAY_PORT}'
+        )
+
         self.loop.run_forever()
         self.loop.close()
 

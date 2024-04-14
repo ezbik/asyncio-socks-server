@@ -31,6 +31,8 @@ DEFAULT_CONFIG = {
     "MAX_DL_SPEED": 0,
     "WHITELISTED_CLIENTS": [],
     "RESOLVER": "",
+    "RELAY_HOST": "127.0.0.1",
+    "RELAY_PORT": "4000"
 }
 
 
@@ -47,6 +49,8 @@ class Config(dict):
     MAX_DL_SPEED: int
     WHITELISTED_CLIENTS: list
     RESOLVER: str
+    RELAY_HOST: str
+    RELAY_PORT: int
 
     def __init__(self):
         super().__init__({**DEFAULT_CONFIG})

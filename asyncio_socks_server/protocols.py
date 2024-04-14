@@ -284,11 +284,8 @@ class LocalTCP(asyncio.Protocol):
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
 
-                    RelayHost='127.0.0.1'
-                    RelayPort='1080'
-
                     task = loop.create_connection(
-                        lambda: RemoteTCP_relay(self, self.config, DST_ADDR, DST_PORT), RelayHost, RelayPort
+                        lambda: RemoteTCP_relay(self, self.config, DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
                     )
                     remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
                 except ConnectionRefusedError:

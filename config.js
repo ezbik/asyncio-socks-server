@@ -8,5 +8,7 @@
     "USERS": {
         "alice": "cool"
     },
-    "RESOLVER": "1.1.1.1"
+    "RESOLVER": "1.1.1.1",
+    "RELAY_HOST": "127.0.0.1",
+    "RELAY_PORT": "1080"
 }
