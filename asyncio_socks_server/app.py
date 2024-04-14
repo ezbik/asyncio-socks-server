@@ -63,7 +63,7 @@ class SocksServer:
         )
 
         logger.info(
-            f'Max download speed: {self.config.MAX_DL_SPEED or Unlimited} KB/s'
+            f'Max download speed: {self.config.MAX_DL_SPEED or "Unlimited"} KB/s'
         )
 
         self.loop.run_forever()
