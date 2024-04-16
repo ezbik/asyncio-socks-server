@@ -260,7 +260,7 @@ class LocalTCP(asyncio.Protocol):
                 try:
                     loop = asyncio.get_event_loop()
 
-                    relaying=True
+                    relaying=True # ->MPROXY or direct 
                     if relaying:
                         pass
                     else:
@@ -285,7 +285,7 @@ class LocalTCP(asyncio.Protocol):
                     # Now DST_ADDR is Ipv4/Ipv6. 
 
                     task = loop.create_connection(
-                        lambda: RemoteTCP_relay(self, self.config, DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
+                        lambda: RemoteTCP_relay(self, self.config, 'TCP', DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
                     )
                     remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
                 except ConnectionRefusedError:
@@ -394,12 +394,13 @@ class LocalTCP(asyncio.Protocol):
 
 
 class RemoteTCP_relay(asyncio.Protocol):
-    def __init__(self, local_tcp, config: Config, DST_ADDR, DST_PORT):
+    def __init__(self, local_tcp, config: Config, DST_PROTO, DST_ADDR, DST_PORT):
         self.local_tcp = local_tcp
         self.config = config
         self.peername = None
         self.transport = None
         self.is_closing = False
+        self.DST_PROTO=DST_PROTO.upper()
         self.DST_ADDR=DST_ADDR
         self.DST_PORT=DST_PORT
 
@@ -414,7 +415,7 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Made RemoteTCP_relay connection to {self.peername}"
         )
-        HEADER=f'MPROXY TCP {self.DST_ADDR} {self.DST_PORT}\r\n'.encode()
+        HEADER=f'MPROXY {self.DST_PROTO} {self.DST_ADDR} {self.DST_PORT}\r\n'.encode()
         if not self.transport.is_closing():
             self.transport.write(HEADER)
             self.config.ACCESS_LOG and access_logger.debug(
@@ -452,12 +453,15 @@ class RemoteTCP_relay(asyncio.Protocol):
 
 
 class LocalUDP(asyncio.DatagramProtocol):
+    # this class starts local UDP socket, and awaits for the data from Socks5 client
+    #.. then it relays the data farther<>the Socks5 client
     def __init__(self, host_port_limit: Tuple[str, int], config: Config):
         self.host_port_limit = host_port_limit
         self.config = config
         self.transport = None
         self.sockname = None
         self.is_closing = False
+        self.relaying=True # -> MPROXY or direct
 
     def write(self, data, port_addr):
         if not self.transport.is_closing():
@@ -520,12 +524,11 @@ class LocalUDP(asyncio.DatagramProtocol):
             f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
         )
 
-        relaying=True
-
-        if relaying:
+        if self.relaying:
+            # no need to resolve, keep Hostname as is.
             pass
         else:
-            # direct sending:
+            # direct sending, so resolve needed.
             if ATYP == SocksAtyp.DOMAIN:
                 HNAME=DST_ADDR
                 if acl(config, HNAME) == -1:
@@ -554,7 +557,11 @@ class LocalUDP(asyncio.DatagramProtocol):
             return
 
         loop = asyncio.get_event_loop()
-        loop.create_task(self.relay_task(data, local_host_port))
+        if self.relaying:
+            pass
+        else:
+            # direct UDP send
+            loop.create_task(self.relay_task(data, local_host_port))
 
     async def relay_task(self, data: bytes, local_host_port: Tuple[str, int]):
         try:
