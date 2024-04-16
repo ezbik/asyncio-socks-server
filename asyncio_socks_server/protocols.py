@@ -423,6 +423,7 @@ class RemoteTCP_relay(asyncio.Protocol):
             )
 
     def data_received(self, data):
+        print(self.local_tcp)
         self.local_tcp.write(data)
 
     def eof_received(self):
@@ -462,6 +463,8 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.sockname = None
         self.is_closing = False
         self.relaying=True # -> MPROXY or direct
+        self.remote_udp_table={}
+        self.remote_tcp =None
 
     def write(self, data, port_addr):
         if not self.transport.is_closing():
@@ -524,7 +527,8 @@ class LocalUDP(asyncio.DatagramProtocol):
             f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
         )
 
-        if self.relaying:
+        relaying=True # ->MPROXY 
+        if relaying:
             # no need to resolve, keep Hostname as is.
             pass
         else:
@@ -557,11 +561,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             return
 
         loop = asyncio.get_event_loop()
-        if self.relaying:
-            pass
-        else:
-            # direct UDP send
-            loop.create_task(self.relay_task(data, local_host_port))
+        loop.create_task(self.relay_task(data, local_host_port))
 
     async def relay_task(self, data: bytes, local_host_port: Tuple[str, int]):
         try:
@@ -574,18 +574,15 @@ class LocalUDP(asyncio.DatagramProtocol):
                 header_length,
             ) = self.parse_udp_request_header(data, self.config)
 
-            if local_host_port not in self.remote_udp_table:
+            if not self.remote_tcp: 
                 loop = asyncio.get_event_loop()
-                if self.relaying:
-                    task = loop.create_connection(
-                        lambda: RemoteTCP_relay(self, self.config, 'UDP', DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
-                    )
-                    remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
-                    bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")
-                    self.config.ACCESS_LOG and access_logger.info( f"Established TCP stream between" f" {self.peername} and {self.remote_tcp.peername}")
-                self.remote_udp_table[local_host_port] = remote_tcp
-            remote_tcp = self.remote_udp_table[local_host_port]
-            relay_tcp.write(data[header_length:] )
+                task = loop.create_connection(
+                    lambda: RemoteTCP_relay(self, self.config, 'UDP', DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
+                )
+                remote_tcp_transport, self.remote_tcp = await asyncio.wait_for(task, 5)
+                bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")
+                self.config.ACCESS_LOG and access_logger.info( f"Established TCP stream -> {self.remote_tcp.peername}")
+            self.remote_tcp.write(data[header_length:] )
         except Exception as e:
             error_logger.warning(
                 f"{e} during relaying the request from {local_host_port}"
@@ -597,7 +594,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             return
         self.is_closing = True
         self.transport and self.transport.close()
-        relay_tcp.close
+        self.remote_tcp.close
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalUDP endpoint at {self.sockname}"
         )
