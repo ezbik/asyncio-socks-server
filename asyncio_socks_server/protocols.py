@@ -395,7 +395,7 @@ class LocalTCP(asyncio.Protocol):
 
 class RemoteTCP_relay(asyncio.Protocol):
     def __init__(self, local_tcp, config: Config, DST_PROTO, DST_ADDR, DST_PORT):
-        self.local_tcp = local_tcp
+        self.local_tcp = local_tcp # LOL it can be UDP too.
         self.config = config
         self.peername = None
         self.transport = None
@@ -423,8 +423,14 @@ class RemoteTCP_relay(asyncio.Protocol):
             )
 
     def data_received(self, data):
-        print(self.local_tcp)
-        self.local_tcp.write(data)
+        print( self.local_tcp.__class__.__name__ )
+        if self.local_tcp.__class__.__name__ == 'LocalUDP':
+            print(111)
+            remote_host_port=(self.DST_ADDR, self.DST_PORT)
+            self.local_tcp.write(data, remote_host_port )
+        else:
+            #TCP
+            self.local_tcp.write(data)
 
     def eof_received(self):
         self.close()
@@ -467,8 +473,10 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.remote_tcp =None
 
     def write(self, data, port_addr):
+        remote_host_port=('2.2.2.2', 111)
         if not self.transport.is_closing():
-            self.transport.sendto(data, port_addr)
+            header = self.gen_udp_reply_header(remote_host_port, self.config)
+            self.transport.sendto( header + data, port_addr )
 
     def connection_made(self, transport) -> None:
         self.transport = transport
@@ -477,6 +485,42 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there"
         )
+
+    @staticmethod
+    def gen_udp_reply_header(remote_host_port: Tuple[str, int], config):
+        """Generate the header of UDP reply.
+
+        When a UDP relay server receives a reply datagram from a remote
+        host, it MUST encapsulate that datagram using the UDP request
+        header: ::
+
+            +----+------+------+----------+----------+----------+
+            |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+            +----+------+------+----------+----------+----------+
+            | 2  |  1   |  1   | Variable |    2     | Variable |
+            +----+------+------+----------+----------+----------+
+
+        and any authentication-method-dependent encapsulation.
+
+        :param remote_host_port: A tuple of host and port
+        :return: The bytes of the generated header
+        """
+
+        RSV, FRAG = b"\x00\x00", b"\x00"
+        remote_host, remote_port = remote_host_port
+        ATYP = get_socks_atyp_from_host(remote_host)
+        if ATYP == SocksAtyp.IPV4:
+            DST_ADDR = inet_pton(AF_INET, remote_host)
+        elif ATYP == SocksAtyp.IPV6:
+            DST_ADDR = inet_pton(AF_INET6, remote_host)
+        else:  # ATYP == SocksAtyp.DOMAIN
+            DST_ADDR = len(remote_host).to_bytes(1, "big") + remote_host.encode("UTF-8")
+        ATYP = ATYP.to_bytes(1, "big")
+        DST_PORT = int(remote_port).to_bytes(2, "big")
+        config.ACCESS_LOG and access_logger.debug(
+            f'Outcoming UDP request to {remote_host}:{remote_port}'
+        )
+        return RSV + FRAG + ATYP + DST_ADDR + DST_PORT
 
     @staticmethod
     def parse_udp_request_header(data: bytes, config):
