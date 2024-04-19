@@ -476,14 +476,15 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.peername = None # socks5 client host,port Tuple
 
     def write(self, data):
-        remote_host_port=('167.172.59.39', 80)
+        #remote_host_port=('167.172.59.39', 80)
+        remote_host_port=('0.0.0.0', 0)
         self.config.ACCESS_LOG and access_logger.debug(
-            f'Replying UDP from {remote_host_port} to Socks5 client {self.peername}'
+            f'Replying UDP from {remote_host_port} to Socks5 client {self.local_host_port}'
         )
-        print('sending DATA to local client', data )
+        print(f'sending DATA to local client', data )
         if not self.transport.is_closing():
             header = self.gen_udp_reply_header(remote_host_port, self.config)
-            self.transport.sendto( header + data, self.peername )
+            self.transport.sendto( header + data, self.local_host_port )
 
     def connection_made(self, transport) -> None:
         self.transport = transport
@@ -578,6 +579,7 @@ class LocalUDP(asyncio.DatagramProtocol):
 
     def datagram_received(self, data: bytes, local_host_port: Tuple[str, int]):
         #print('datagram_received from socks5 client', data[:100])
+        self.local_host_port=local_host_port
         cond1 = self.host_port_limit in itertools.product(
             ("0.0.0.0", "::", local_host_port[0]), (0, local_host_port[1])
         )
@@ -601,7 +603,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             ) = self.parse_udp_request_header(data)
 
             self.config.ACCESS_LOG and access_logger.info(
-                f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
+                f'Incoming Socks5 UDP request from {local_host_port} to {DST_ADDR}:{DST_PORT}'
             )
 
             relaying=True # ->MPROXY 
