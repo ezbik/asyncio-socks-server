@@ -394,8 +394,8 @@ class LocalTCP(asyncio.Protocol):
 
 
 class RemoteTCP_relay(asyncio.Protocol):
-    def __init__(self, local_tcp, config: Config, DST_PROTO, DST_ADDR, DST_PORT):
-        self.local_tcp = local_tcp # LOL it can be UDP too.
+    def __init__(self, client_talk, config: Config, DST_PROTO, DST_ADDR, DST_PORT):
+        self.client_talk = client_talk # it can be of LocalTCP or LocalUDP 
         self.config = config
         self.peername = None
         self.transport = None
@@ -423,26 +423,28 @@ class RemoteTCP_relay(asyncio.Protocol):
             )
 
     def data_received(self, data):
-        print( self.local_tcp.__class__.__name__ )
-        if self.local_tcp.__class__.__name__ == 'LocalUDP':
+        print(f'data_received from RemoteTCP_relay', data[:100] )
+        if self.client_talk.__class__.__name__ == 'LocalTCP':
+            # client requested TCP resource from the Socks5 server
+            self.client_talk.write(data)
+        if self.client_talk.__class__.__name__ == 'LocalUDP':
+            # client requested UDP resource from the Socks5 server
             print(111)
             remote_host_port=(self.DST_ADDR, self.DST_PORT)
-            self.local_tcp.write(data, remote_host_port )
-        else:
-            #TCP
-            self.local_tcp.write(data)
+            print(f'relaying to socks5 client')
+            self.client_talk.write(data) 
 
     def eof_received(self):
         self.close()
 
     def pause_writing(self) -> None:
         try:
-            self.local_tcp.transport.pause_reading()
+            self.client_talk.transport.pause_reading()
         except AttributeError:
             pass
 
     def resume_writing(self) -> None:
-        self.local_tcp.transport.resume_reading()
+        self.client_talk.transport.resume_reading()
 
     def connection_lost(self, exc):
         self.close()
@@ -452,7 +454,7 @@ class RemoteTCP_relay(asyncio.Protocol):
             return
         self.is_closing = True
         self.transport and self.transport.close()
-        self.local_tcp.close()
+        self.client_talk.close()
 
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed RemoteTCP_relay connection to {self.peername}"
@@ -471,19 +473,25 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.relaying=True # -> MPROXY or direct
         self.remote_udp_table={}
         self.remote_tcp =None
+        self.peername = None # socks5 client host,port Tuple
 
-    def write(self, data, port_addr):
-        remote_host_port=('2.2.2.2', 111)
+    def write(self, data):
+        remote_host_port=('167.172.59.39', 80)
+        self.config.ACCESS_LOG and access_logger.debug(
+            f'Replying UDP from {remote_host_port} to Socks5 client {self.peername}'
+        )
+        print('sending DATA to local client', data )
         if not self.transport.is_closing():
             header = self.gen_udp_reply_header(remote_host_port, self.config)
-            self.transport.sendto( header + data, port_addr )
+            self.transport.sendto( header + data, self.peername )
 
     def connection_made(self, transport) -> None:
         self.transport = transport
         self.sockname = transport.get_extra_info("sockname")
+        self.peername = transport.get_extra_info("peername")
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there"
+            f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there from {self.peername}"
         )
 
     @staticmethod
@@ -517,13 +525,10 @@ class LocalUDP(asyncio.DatagramProtocol):
             DST_ADDR = len(remote_host).to_bytes(1, "big") + remote_host.encode("UTF-8")
         ATYP = ATYP.to_bytes(1, "big")
         DST_PORT = int(remote_port).to_bytes(2, "big")
-        config.ACCESS_LOG and access_logger.debug(
-            f'Outcoming UDP request to {remote_host}:{remote_port}'
-        )
         return RSV + FRAG + ATYP + DST_ADDR + DST_PORT
 
     @staticmethod
-    def parse_udp_request_header(data: bytes, config):
+    def parse_udp_request_header(data: bytes):
         """Parse the header of UDP request.
 
         Each UDP datagram carries a UDP request header formed as follows: ::
@@ -567,36 +572,12 @@ class LocalUDP(asyncio.DatagramProtocol):
         length += 2
         if length > len(data):
             raise HeaderParseError("Header is too short")
-        config.ACCESS_LOG and access_logger.info(
-            f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
-        )
 
-        relaying=True # ->MPROXY 
-        if relaying:
-            # no need to resolve, keep Hostname as is.
-            pass
-        else:
-            # direct sending, so resolve needed.
-            if ATYP == SocksAtyp.DOMAIN:
-                HNAME=DST_ADDR
-                if acl(config, HNAME) == -1:
-                    raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
-                config.ACCESS_LOG and access_logger.debug(
-                    f'[UDP] resolving remote name {HNAME}'
-                )
-                DST_ADDR = query(config.resolver, HNAME , 'A')
-                if not DST_ADDR:
-                    raise HeaderParseError("Can't resolve hostname {HNAME}")
-                config.ACCESS_LOG and access_logger.debug(
-                    f'[UDP] {HNAME} resolved to {DST_ADDR}'
-                )
-            else:
-                if config.DENY_RAW_IP_ADDRESSES == True:
-                    raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
         return RSV, FRAG, ATYP, DST_ADDR, DST_PORT, length
 
     def datagram_received(self, data: bytes, local_host_port: Tuple[str, int]):
+        #print('datagram_received from socks5 client', data[:100])
         cond1 = self.host_port_limit in itertools.product(
             ("0.0.0.0", "::", local_host_port[0]), (0, local_host_port[1])
         )
@@ -609,6 +590,7 @@ class LocalUDP(asyncio.DatagramProtocol):
 
     async def relay_task(self, data: bytes, local_host_port: Tuple[str, int]):
         try:
+            print('datagram_received from socks5 client', data[:100])
             (
                 RSV,
                 FRAG,
@@ -616,7 +598,34 @@ class LocalUDP(asyncio.DatagramProtocol):
                 DST_ADDR,
                 DST_PORT,
                 header_length,
-            ) = self.parse_udp_request_header(data, self.config)
+            ) = self.parse_udp_request_header(data)
+
+            self.config.ACCESS_LOG and access_logger.info(
+                f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
+            )
+
+            relaying=True # ->MPROXY 
+            if relaying:
+                # no need to resolve, keep Hostname as is.
+                pass
+            else:
+                # direct sending, so resolve needed.
+                if ATYP == SocksAtyp.DOMAIN:
+                    HNAME=DST_ADDR
+                    if acl(self.config, HNAME) == -1:
+                        raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
+                    self.config.ACCESS_LOG and access_logger.debug(
+                        f'[UDP] resolving remote name {HNAME}'
+                    )
+                    DST_ADDR = query(self.config.resolver, HNAME , 'A')
+                    if not DST_ADDR:
+                        raise HeaderParseError("Can't resolve hostname {HNAME}")
+                    self.config.ACCESS_LOG and access_logger.debug(
+                        f'[UDP] {HNAME} resolved to {DST_ADDR}'
+                    )
+                else:
+                    if self.config.DENY_RAW_IP_ADDRESSES == True:
+                        raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
             if not self.remote_tcp: 
                 loop = asyncio.get_event_loop()
@@ -625,8 +634,9 @@ class LocalUDP(asyncio.DatagramProtocol):
                 )
                 remote_tcp_transport, self.remote_tcp = await asyncio.wait_for(task, 5)
                 bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")
-                self.config.ACCESS_LOG and access_logger.info( f"Established TCP stream -> {self.remote_tcp.peername}")
+                self.config.ACCESS_LOG and access_logger.info( f"Established TCP relay stream -> {self.remote_tcp.peername}")
             self.remote_tcp.write(data[header_length:] )
+            print('written data to the TCP relay stream', data[header_length:] )
         except Exception as e:
             error_logger.warning(
                 f"{e} during relaying the request from {local_host_port}"
