@@ -341,8 +341,8 @@ class LocalTCP(asyncio.Protocol):
                     self.stage = self.STAGE_UDP_ASSOCIATE
 
                     self.config.ACCESS_LOG and access_logger.info(
-                        f"Established UDP relay for Socks5 client {self.peername} "
-                        f"at local side {bind_addr,bind_port}"
+                        f"Established UDP relay for Socks5 client (tcp) {self.peername} "
+                        f"at local side (UDP) {bind_addr,bind_port}"
                     )
             else:
                 self.transport.write(self.gen_reply(SocksRep.COMMAND_NOT_SUPPORTED))
@@ -389,7 +389,7 @@ class LocalTCP(asyncio.Protocol):
         self.local_udp and self.local_udp.close()
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Closed LocalTCP connection from {self.peername}"
+            f"Closed LocalTCP connection from socks5 client {self.peername}"
         )
 
 
@@ -423,15 +423,13 @@ class RemoteTCP_relay(asyncio.Protocol):
             )
 
     def data_received(self, data):
-        print(f'data_received from RemoteTCP_relay', data[:100] )
+        #print(f'data_received from RemoteTCP_relay', data[:100] )
         if self.client_talk.__class__.__name__ == 'LocalTCP':
             # client requested TCP resource from the Socks5 server
             self.client_talk.write(data)
         if self.client_talk.__class__.__name__ == 'LocalUDP':
             # client requested UDP resource from the Socks5 server
-            print(111)
             remote_host_port=(self.DST_ADDR, self.DST_PORT)
-            print(f'relaying to socks5 client')
             self.client_talk.write(data) 
 
     def eof_received(self):
@@ -473,7 +471,7 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.relaying=True # -> MPROXY or direct
         self.remote_udp_table={}
         self.remote_tcp =None
-        self.peername = None # socks5 client host,port Tuple
+        #self.peername = None # socks5 client host,port Tuple
 
     def write(self, data):
         #remote_host_port=('167.172.59.39', 80)
@@ -481,7 +479,7 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f'Replying UDP from {remote_host_port} to Socks5 client {self.local_host_port}'
         )
-        print(f'sending DATA to local client', data )
+        #print(f'sending DATA to local client', data )
         if not self.transport.is_closing():
             header = self.gen_udp_reply_header(remote_host_port, self.config)
             self.transport.sendto( header + data, self.local_host_port )
@@ -489,10 +487,10 @@ class LocalUDP(asyncio.DatagramProtocol):
     def connection_made(self, transport) -> None:
         self.transport = transport
         self.sockname = transport.get_extra_info("sockname")
-        self.peername = transport.get_extra_info("peername")
+        #self.peername = transport.get_extra_info("peername")
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there from {self.peername}"
+            f"Made LocalUDP endpoint at {self.sockname}, expecting Socks5 client there"
         )
 
     @staticmethod
@@ -579,6 +577,7 @@ class LocalUDP(asyncio.DatagramProtocol):
 
     def datagram_received(self, data: bytes, local_host_port: Tuple[str, int]):
         #print('datagram_received from socks5 client', data[:100])
+        # local_host_port : local socks5 client Tuple (host,port)
         self.local_host_port=local_host_port
         cond1 = self.host_port_limit in itertools.product(
             ("0.0.0.0", "::", local_host_port[0]), (0, local_host_port[1])
@@ -592,7 +591,7 @@ class LocalUDP(asyncio.DatagramProtocol):
 
     async def relay_task(self, data: bytes, local_host_port: Tuple[str, int]):
         try:
-            print('datagram_received from socks5 client', data[:100])
+            #print('datagram_received from socks5 client', data[:100])
             (
                 RSV,
                 FRAG,
@@ -603,7 +602,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             ) = self.parse_udp_request_header(data)
 
             self.config.ACCESS_LOG and access_logger.info(
-                f'Incoming Socks5 UDP request from {local_host_port} to {DST_ADDR}:{DST_PORT}'
+                f'Incoming Socks5 UDP request from client\'s UDP {local_host_port} to remote UDP {DST_ADDR}:{DST_PORT}'
             )
 
             relaying=True # ->MPROXY 
@@ -638,7 +637,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")
                 self.config.ACCESS_LOG and access_logger.info( f"Established TCP relay stream -> {self.remote_tcp.peername}")
             self.remote_tcp.write(data[header_length:] )
-            print('written data to the TCP relay stream', data[header_length:] )
+            #print('written data to the TCP relay stream', data[header_length:] )
         except Exception as e:
             error_logger.warning(
                 f"{e} during relaying the request from {local_host_port}"
@@ -650,7 +649,8 @@ class LocalUDP(asyncio.DatagramProtocol):
             return
         self.is_closing = True
         self.transport and self.transport.close()
-        self.remote_tcp.close
+        try: self.remote_tcp.close
+        except: pass
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalUDP endpoint at {self.sockname}"
         )
