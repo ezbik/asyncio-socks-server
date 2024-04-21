@@ -7,6 +7,5 @@
     "DEBUG": true,
     "USERS": {
         "alice": "cool"
-    },
-    "RESOLVER": "1.1.1.1"
+    }
 }

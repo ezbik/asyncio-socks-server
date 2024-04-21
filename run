@@ -1,0 +1,6 @@
+#!/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# vim: filetype=bash
+
+export PYTHONPATH=./
+python3 ./asyncio_socks_server/__main__.py --config ./config.js
