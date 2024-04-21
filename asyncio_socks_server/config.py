@@ -121,7 +121,8 @@ class Config(dict):
         config = dict(filter(lambda i: i[0].isupper(), config.items()))
 
         resolver = dns.resolver.Resolver()
-        if config['RESOLVER']:
+
+        if config.get('RESOLVER'):
             resolver.nameservers = [ config['RESOLVER'] ]
         
         config['resolver']=resolver
