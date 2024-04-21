@@ -461,7 +461,7 @@ class LocalUDP(asyncio.DatagramProtocol):
         )
 
     @staticmethod
-    def parse_udp_request_header(data: bytes, config):
+    def parse_udp_request_header(data: bytes):
         """Parse the header of UDP request.
 
         Each UDP datagram carries a UDP request header formed as follows: ::
@@ -505,26 +505,6 @@ class LocalUDP(asyncio.DatagramProtocol):
         length += 2
         if length > len(data):
             raise HeaderParseError("Header is too short")
-        config.ACCESS_LOG and access_logger.info(
-            f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
-        )
-
-        if ATYP == SocksAtyp.DOMAIN:
-            HNAME=DST_ADDR
-            if acl(config, HNAME) == -1:
-                raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
-            config.ACCESS_LOG and access_logger.debug(
-                f'[UDP] resolving remote name {HNAME}'
-            )
-            DST_ADDR = query(config.resolver, HNAME , 'A')
-            if not DST_ADDR:
-                raise HeaderParseError("Can't resolve hostname {HNAME}")
-            config.ACCESS_LOG and access_logger.debug(
-                f'[UDP] {HNAME} resolved to {DST_ADDR}'
-            )
-        else:
-            if config.DENY_RAW_IP_ADDRESSES == True:
-                raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
         return RSV, FRAG, ATYP, DST_ADDR, DST_PORT, length
 
@@ -548,7 +528,28 @@ class LocalUDP(asyncio.DatagramProtocol):
                 DST_ADDR,
                 DST_PORT,
                 header_length,
-            ) = self.parse_udp_request_header(data, self.config)
+            ) = self.parse_udp_request_header(data)
+
+            self.config.ACCESS_LOG and access_logger.info(
+                f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
+            )
+
+            if ATYP == SocksAtyp.DOMAIN:
+                HNAME=DST_ADDR
+                if acl(self.config, HNAME) == -1:
+                    raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
+                self.config.ACCESS_LOG and access_logger.debug(
+                    f'[UDP] resolving remote name {HNAME}'
+                )
+                DST_ADDR = query(self.config.resolver, HNAME , 'A')
+                if not DST_ADDR:
+                    raise HeaderParseError("Can't resolve hostname {HNAME}")
+                self.config.ACCESS_LOG and access_logger.debug(
+                    f'[UDP] {HNAME} resolved to {DST_ADDR}'
+                )
+            else:
+                if self.config.DENY_RAW_IP_ADDRESSES == True:
+                    raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
             if local_host_port not in self.remote_udp_table:
                 loop = asyncio.get_event_loop()
