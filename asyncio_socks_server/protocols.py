@@ -287,7 +287,7 @@ class LocalTCP(asyncio.Protocol):
                     task = loop.create_connection(
                         lambda: RemoteTCP_relay(self, self.config, 'TCP', DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
                     )
-                    remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
+                    self.remote_tcp_transport, remote_tcp = await asyncio.wait_for(task, 5)
                 except ConnectionRefusedError:
                     self.transport.write(self.gen_reply(SocksRep.CONNECTION_REFUSED))
                     raise CommandExecError("Connection was refused") from None
@@ -303,7 +303,7 @@ class LocalTCP(asyncio.Protocol):
                     ) from None
                 else:
                     self.remote_tcp = remote_tcp
-                    bind_addr, bind_port = remote_tcp_transport.get_extra_info(
+                    bind_addr, bind_port = self.remote_tcp_transport.get_extra_info(
                         "sockname"
                     )
                     self.transport.write(
@@ -433,6 +433,7 @@ class RemoteTCP_relay(asyncio.Protocol):
             self.client_talk.write(data) 
 
     def eof_received(self):
+        print('eof rcvd' )
         self.close()
 
     def pause_writing(self) -> None:
@@ -445,9 +446,11 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.client_talk.transport.resume_reading()
 
     def connection_lost(self, exc):
+        print('conn lost' )
         self.close()
 
     def close(self):
+        print('closing remote tcp relay' )
         if self.is_closing:
             return
         self.is_closing = True
@@ -633,8 +636,8 @@ class LocalUDP(asyncio.DatagramProtocol):
                 task = loop.create_connection(
                     lambda: RemoteTCP_relay(self, self.config, 'UDP', DST_ADDR, DST_PORT), self.config.RELAY_HOST, self.config.RELAY_PORT
                 )
-                remote_tcp_transport, self.remote_tcp = await asyncio.wait_for(task, 5)
-                bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")
+                self.remote_tcp_transport, self.remote_tcp = await asyncio.wait_for(task, 5)
+                bind_addr, bind_port = self.remote_tcp_transport.get_extra_info( "sockname")
                 self.config.ACCESS_LOG and access_logger.info( f"Established TCP relay stream -> {self.remote_tcp.peername}")
             self.remote_tcp.write(data[header_length:] )
             #print('written data to the TCP relay stream', data[header_length:] )
