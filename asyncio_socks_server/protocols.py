@@ -224,10 +224,10 @@ class LocalTCP(asyncio.Protocol):
             # Step 1.3
             # The client and the server enter a method-specific sub-negotiation.
 
-            USERNAME = await authenticator.authenticate()
+            self.USERNAME = await authenticator.authenticate() or '-'
 
             self.config.ACCESS_LOG and access_logger.info(
-                f'Authenticated user {USERNAME or "[no username specified]"} from {CLIENT_SRC_ADDR}'
+                f'Authenticated user {self.USERNAME or "[no username specified]"} from {CLIENT_SRC_ADDR}'
             )
 
             # Step 2.1
@@ -319,7 +319,7 @@ class LocalTCP(asyncio.Protocol):
                 try:
                     loop = asyncio.get_event_loop()
                     task = loop.create_datagram_endpoint(
-                        lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
+                        lambda: LocalUDP((DST_ADDR, DST_PORT), self.config, self.USERNAME),
                         local_addr=("0.0.0.0", 0),
                     )
                     local_udp_transport, local_udp = await asyncio.wait_for(task, 5)
@@ -415,7 +415,19 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Made RemoteTCP_relay connection to {self.peername}"
         )
-        HEADER=f'MPROXY {self.DST_PROTO} {self.DST_ADDR} {self.DST_PORT}\r\n'.encode()
+
+
+        if self.client_talk.__class__.__name__ == 'LocalTCP':
+            ORIG_SRC_ADDR=self.client_talk.transport.get_extra_info("peername")[0]
+            ORIG_SRC_PORT=self.client_talk.transport.get_extra_info("peername")[1]
+            USERNAME=self.client_talk.USERNAME
+        if self.client_talk.__class__.__name__ == 'LocalUDP':
+            ORIG_SRC_ADDR=self.client_talk.local_host_port[0]
+            ORIG_SRC_PORT=self.client_talk.local_host_port[1]
+            USERNAME=self.client_talk.USERNAME
+
+
+        HEADER=f'MPROXY {self.DST_PROTO} {self.DST_ADDR} {self.DST_PORT} {ORIG_SRC_ADDR} {ORIG_SRC_PORT} {USERNAME}\r\n'.encode()
         if not self.transport.is_closing():
             self.transport.write(HEADER)
             self.config.ACCESS_LOG and access_logger.debug(
@@ -465,7 +477,7 @@ class RemoteTCP_relay(asyncio.Protocol):
 class LocalUDP(asyncio.DatagramProtocol):
     # this class starts local UDP socket, and awaits for the data from Socks5 client
     #.. then it relays the data farther<>the Socks5 client
-    def __init__(self, host_port_limit: Tuple[str, int], config: Config):
+    def __init__(self, host_port_limit: Tuple[str, int], config: Config, USERNAME: str):
         self.host_port_limit = host_port_limit
         self.config = config
         self.transport = None
@@ -474,6 +486,7 @@ class LocalUDP(asyncio.DatagramProtocol):
         self.relaying=True # -> MPROXY or direct
         self.remote_udp_table={}
         self.remote_tcp =None
+        self.USERNAME = USERNAME
         #self.peername = None # socks5 client host,port Tuple
 
     def write(self, data):
