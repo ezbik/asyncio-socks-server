@@ -433,7 +433,7 @@ class RemoteTCP_relay(asyncio.Protocol):
             self.client_talk.write(data) 
 
     def eof_received(self):
-        print('eof rcvd' )
+        #print('eof rcvd' )
         self.close()
 
     def pause_writing(self) -> None:
@@ -446,11 +446,11 @@ class RemoteTCP_relay(asyncio.Protocol):
         self.client_talk.transport.resume_reading()
 
     def connection_lost(self, exc):
-        print('conn lost' )
+        #print('conn lost' )
         self.close()
 
     def close(self):
-        print('closing remote tcp relay' )
+        #print('closing remote tcp relay' )
         if self.is_closing:
             return
         self.is_closing = True
