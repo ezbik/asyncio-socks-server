@@ -314,9 +314,13 @@ class LocalTCP(asyncio.Protocol):
             elif CMD == SocksCommand.UDP_ASSOCIATE:
                 try:
                     loop = asyncio.get_event_loop()
+                    if int(self.config.MIN_PORT_UDP_ASSOCIATE) and int(self.config.MAX_PORT_UDP_ASSOCIATE):
+                        local_udp_port_bind= find_free_udp_port( self.config.MIN_PORT_UDP_ASSOCIATE, self.config.MAX_PORT_UDP_ASSOCIATE )
+                    else:
+                        local_udp_port_bind=0
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
-                        local_addr=("0.0.0.0", 0),
+                        local_addr=("0.0.0.0", local_udp_port_bind),
                     )
                     local_udp_transport, local_udp = await asyncio.wait_for(task, 5)
                 except Exception:
@@ -331,6 +335,8 @@ class LocalTCP(asyncio.Protocol):
                     bind_addr, bind_port = local_udp_transport.get_extra_info(
                         "sockname"
                     )
+                    if self.config.REWRITE_UDP_ASSOCIATE_IP_TO :
+                        bind_addr=self.config.REWRITE_UDP_ASSOCIATE_IP_TO   # remote IP of  myrouter.com 
                     self.transport.write(
                         self.gen_reply(SocksRep.SUCCEEDED, bind_addr, bind_port)
                     )
@@ -347,6 +353,18 @@ class LocalTCP(asyncio.Protocol):
         except (SocksException, ConnectionError, ValueError) as e:
             error_logger.warning(f"{e} during the negotiation with {self.peername}")
             self.close()
+
+    def find_free_udp_port(start, end):
+        ports = list(range(start, end))
+        random.shuffle(ports)
+        for port in ports:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                try:
+                    s.bind(('0.0.0.0', port))
+                    return port
+                except OSError:
+                    continue
+        raise RuntimeError("No free port found in range.")
 
     def data_received(self, data):
         if self.stage == self.STAGE_NEGOTIATE:
