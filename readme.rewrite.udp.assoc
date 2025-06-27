@@ -1,0 +1,12 @@
+
+
+run proxy server behind NAT on a LAN IP
+
+set it to rewrite UDP ASSOC hostname to ext IP of the router
+
+set it to bind port range e.g. 20000..21000 
+
+On router forward UDP  20000..21000 to the LAN IP of the proxy server
+
+          forward TCP proxy port e.g. 5001  to the LAN IP of the proxy server
+
