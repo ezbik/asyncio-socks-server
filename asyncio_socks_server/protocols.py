@@ -4,6 +4,7 @@ import socket
 from asyncio.streams import StreamReader
 from socket import AF_INET, AF_INET6, inet_ntop, inet_pton
 from typing import Optional, Tuple
+import random
 
 from asyncio_socks_server.authenticators import AUTHENTICATORS_CLS_LIST, NoAuthenticator
 from asyncio_socks_server.config import Config
@@ -22,6 +23,18 @@ from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 import re
 import time
+
+def find_free_udp_port(start, end):
+    ports = list(range(start, end))
+    random.shuffle(ports)
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            try:
+                s.bind(('0.0.0.0', port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("No free port found in range.")
 
 class SpeedAnalyzer:
     def __init__(self):
@@ -149,6 +162,7 @@ class LocalTCP(asyncio.Protocol):
         ATYP = ATYP.to_bytes(1, "big")
         BND_PORT = int(bind_port).to_bytes(2, "big")
         return VER + REP + RSV + ATYP + BND_ADDR + BND_PORT
+
 
     async def negotiate(self):
         """Negotiate with the client. Find more detail in RFC1928.
@@ -313,9 +327,10 @@ class LocalTCP(asyncio.Protocol):
                     )
             elif CMD == SocksCommand.UDP_ASSOCIATE:
                 try:
+                    print('1111111') #, local_udp_port_bind)
                     loop = asyncio.get_event_loop()
                     if int(self.config.MIN_PORT_UDP_ASSOCIATE) and int(self.config.MAX_PORT_UDP_ASSOCIATE):
-                        local_udp_port_bind= find_free_udp_port( self.config.MIN_PORT_UDP_ASSOCIATE, self.config.MAX_PORT_UDP_ASSOCIATE )
+                        local_udp_port_bind= find_free_udp_port( int(self.config.MIN_PORT_UDP_ASSOCIATE), int(self.config.MAX_PORT_UDP_ASSOCIATE) )
                     else:
                         local_udp_port_bind=0
                     task = loop.create_datagram_endpoint(
@@ -323,12 +338,12 @@ class LocalTCP(asyncio.Protocol):
                         local_addr=("0.0.0.0", local_udp_port_bind),
                     )
                     local_udp_transport, local_udp = await asyncio.wait_for(task, 5)
-                except Exception:
+                except Exception as e:
                     self.transport.write(
                         self.gen_reply(SocksRep.GENERAL_SOCKS_SERVER_FAILURE)
                     )
                     raise CommandExecError(
-                        "General socks server failure occurred"
+                        f"General socks server failure occurred {e}"
                     ) from None
                 else:
                     self.local_udp = local_udp
@@ -353,18 +368,6 @@ class LocalTCP(asyncio.Protocol):
         except (SocksException, ConnectionError, ValueError) as e:
             error_logger.warning(f"{e} during the negotiation with {self.peername}")
             self.close()
-
-    def find_free_udp_port(start, end):
-        ports = list(range(start, end))
-        random.shuffle(ports)
-        for port in ports:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                try:
-                    s.bind(('0.0.0.0', port))
-                    return port
-                except OSError:
-                    continue
-        raise RuntimeError("No free port found in range.")
 
     def data_received(self, data):
         if self.stage == self.STAGE_NEGOTIATE:

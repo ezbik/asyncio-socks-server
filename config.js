@@ -8,7 +8,6 @@
     "USERS": {
         "alice": "cool"
     },
-    "REWRITE_UDP_ASSOCIATE_IP_TO": "5.5.5.5",
-    "MIN_PORT_UDP_ASSOCIATE": 20000,
-    "MAX_PORT_UDP_ASSOCIATE": 21000,
+    "MIN_PORT_UDP_ASSOCIATE": "20000",
+    "MAX_PORT_UDP_ASSOCIATE": "20100"
 }
