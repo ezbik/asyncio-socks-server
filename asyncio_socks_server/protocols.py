@@ -270,7 +270,6 @@ class LocalTCP(asyncio.Protocol):
                     f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT}'
                 )
 
-
                 try:
                     loop = asyncio.get_event_loop()
 
@@ -326,13 +325,18 @@ class LocalTCP(asyncio.Protocol):
                         f" {self.peername} and {self.remote_tcp.peername}"
                     )
             elif CMD == SocksCommand.UDP_ASSOCIATE:
+                self.config.ACCESS_LOG and access_logger.debug(
+                    f'Incoming Socks5 Command UDP_ASSOCIATE from {self.peername}'
+                )
                 try:
-                    print('1111111') #, local_udp_port_bind)
                     loop = asyncio.get_event_loop()
                     if int(self.config.MIN_PORT_UDP_ASSOCIATE) and int(self.config.MAX_PORT_UDP_ASSOCIATE):
                         local_udp_port_bind= find_free_udp_port( int(self.config.MIN_PORT_UDP_ASSOCIATE), int(self.config.MAX_PORT_UDP_ASSOCIATE) )
                     else:
                         local_udp_port_bind=0
+                    self.config.ACCESS_LOG and access_logger.debug(
+                        f"Chosen local UDP ASSOC port {local_udp_port_bind} for {self.peername}"
+                    )
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
                         local_addr=("0.0.0.0", local_udp_port_bind),
