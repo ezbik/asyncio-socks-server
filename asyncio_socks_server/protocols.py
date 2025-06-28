@@ -355,7 +355,10 @@ class LocalTCP(asyncio.Protocol):
                         "sockname"
                     )
                     if self.config.REWRITE_UDP_ASSOCIATE_IP_TO :
-                        bind_addr=self.config.REWRITE_UDP_ASSOCIATE_IP_TO   # remote IP of  myrouter.com 
+                        bind_addr=self.config.REWRITE_UDP_ASSOCIATE_IP_TO  
+                        self.config.ACCESS_LOG and access_logger.debug(
+                            f"Rewritten Bind Address to {bind_addr} in UDP ASSOC response for {self.peername}"
+                        )
                     self.transport.write(
                         self.gen_reply(SocksRep.SUCCEEDED, bind_addr, bind_port)
                     )
