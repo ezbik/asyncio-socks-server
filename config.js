@@ -1,6 +1,6 @@
 {
     "LISTEN_HOST": "0.0.0.0",
-    "LISTEN_PORT": 5001,
+    "LISTEN_PORT": 5101,
     "AUTH_METHOD": 2,
     "ACCESS_LOG": true,
     "STRICT": false,
@@ -9,5 +9,6 @@
         "alice": "cool"
     },
     "MIN_PORT_UDP_ASSOCIATE": "20000",
-    "MAX_PORT_UDP_ASSOCIATE": "20100"
+    "MAX_PORT_UDP_ASSOCIATE": "20100",
+    "REWRITE_UDP_ASSOCIATE_IP_TO":  "5.252.21.210"
 }
