@@ -1,31 +1,51 @@
 
-On Socks5 proxy server
+If your router doesnt support CONE NAT: (e.g. default linux with SYMMETRICAL NAT):
 
-    run Socks5 proxy server behind NAT on a LAN IP
+    On Socks5 proxy server
 
-    set it to rewrite UDP ASSOC hostname to ext IP of the router
-        "REWRITE_UDP_ASSOCIATE_IP_TO": "3.3.3.3"
+        run Socks5 proxy server behind NAT on a LAN IP
 
-    set it to bind UDP port range e.g. 20000..21000 
-        "MIN_PORT_UDP_ASSOCIATE": 20000
-        "MAX_PORT_UDP_ASSOCIATE": 21000
+        set it to rewrite UDP ASSOC hostname to ext IP of the router
+            "REWRITE_UDP_ASSOCIATE_IP_TO": "3.3.3.3"
 
-On router 
-    forward UDP  20000..21000 to the LAN IP of the Socks5 proxy server
-    forward TCP proxy port e.g. 5001  to the LAN IP of the Socks5 proxy server
+        set it to bind UDP port range e.g. 20000..21000 
+            "MIN_PORT_UDP_ASSOCIATE": 20000
+            "MAX_PORT_UDP_ASSOCIATE": 21000
 
-    e.g.
+    On router 
+        forward UDP  20000..21000 to the LAN IP of the Socks5 proxy server
+        forward TCP proxy port e.g. 5001  to the LAN IP of the Socks5 proxy server
 
-    iptables -t nat -A PREROUTING -d modus.tanatos.org -p udp -m multiport  --dports 20000:20100    -j DNAT --to  172.22.24.106
-    iptables -t nat -A PREROUTING -d modus.tanatos.org -p tcp --dport 5101 -j DNAT --to  172.22.24.106
-    iptables -t nat -A POSTROUTING -d 172.22.24.106 -j MASQUERADE
-    sysctl -w net.ipv4.ip_forward = 1
+        e.g for Linux router : 
 
-    where
+            iptables -t nat -A PREROUTING -d modus.tanatos.org -p udp -m multiport  --dports 20000:20100    -j DNAT --to  172.22.24.106
+            iptables -t nat -A PREROUTING -d modus.tanatos.org -p tcp --dport 5101 -j DNAT --to  172.22.24.106
+            iptables -t nat -A POSTROUTING -d 172.22.24.106 -j MASQUERADE
+            sysctl -w net.ipv4.ip_forward = 1
 
-    modus.tanatos.org           ext IP of the router
-    172.22.24.106               LAN IP of proxy server
-    20000:20100                 UDP port range of that Socks5 proxy server
-    5101                        TCP port of that Socks5 proxy server
+            where
+
+            modus.tanatos.org           ext IP of the router
+            172.22.24.106               LAN IP of proxy server
+            20000:20100                 UDP port range of that Socks5 proxy server
+            5101                        TCP port of that Socks5 proxy server
 
             
+If your router support CONE NAT (Open\DD-WRT, TPlink, ASUS,etc):
+
+    On Socks5 proxy server
+
+        run Socks5 proxy server behind NAT on a LAN IP
+
+        set it to rewrite UDP ASSOC hostname to ext IP of the router
+            "REWRITE_UDP_ASSOCIATE_IP_TO": "3.3.3.3"
+
+        set CONE NAT FIX
+            "CONE_NAT_FIX": true
+
+    On router 
+    
+        forward TCP proxy port e.g. 5001  to the LAN IP of the Socks5 proxy server
+        enable CONE NAT
+
+

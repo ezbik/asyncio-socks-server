@@ -337,6 +337,12 @@ class LocalTCP(asyncio.Protocol):
                     self.config.ACCESS_LOG and access_logger.debug(
                         f"Chosen local UDP ASSOC port {local_udp_port_bind} for {self.peername}"
                     )
+                    if self.config.CONE_NAT_FIX:
+                        hole_punch_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                        hole_punch_sock.bind(('0.0.0.0', self.local_udp_port_bind))  # Bind to your local port
+                        await loop.sock_sendto(hole_punch_sock, b"HOLEPUNCH", self.peername)
+                        hole_punch_sock.close()
+                        self.config.ACCESS_LOG and access_logger.debug(f"Sent UDP hole punch for local router, to remote client {self.peername}")
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
                         local_addr=("0.0.0.0", local_udp_port_bind),
