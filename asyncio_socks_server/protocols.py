@@ -94,6 +94,7 @@ class HolePunchProtocol(asyncio.DatagramProtocol):
 
     def connection_made(self, transport):
         transport.sendto(b"HOLEPUNCH", self.peername)
+        transport.close()  #  close immediately after send
 
 class LocalTCP(asyncio.Protocol):
     STAGE_NEGOTIATE = 0
@@ -344,12 +345,11 @@ class LocalTCP(asyncio.Protocol):
                     self.config.ACCESS_LOG and access_logger.debug(
                         f"Chosen local UDP ASSOC port {local_udp_port_bind} for {self.peername}"
                     )
-                    if self.config.CONE_NAT_FIX:
+                    if self.config.CONE_NAT_FIX :
                         self.config.ACCESS_LOG and access_logger.debug(f"Sending UDP hole punch (breaking through the local router), to remote client {self.peername}")
                         await loop.create_datagram_endpoint(
                             lambda: HolePunchProtocol(self.peername),
                             local_addr=('0.0.0.0', local_udp_port_bind),
-                            remote_addr=None  # use None to send manually to any peer
                         )
 
                     task = loop.create_datagram_endpoint(
