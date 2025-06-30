@@ -24,6 +24,8 @@ from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 import re
 import time
 
+UDP_HOLE_PUNCH_DST_PORT=999
+
 def find_free_udp_port(start, end):
     ports = list(range(start, end))
     random.shuffle(ports)
@@ -346,9 +348,12 @@ class LocalTCP(asyncio.Protocol):
                         f"Chosen local UDP ASSOC port {local_udp_port_bind} for {self.peername}"
                     )
                     if self.config.CONE_NAT_FIX :
-                        self.config.ACCESS_LOG and access_logger.debug(f"Sending UDP hole punch (breaking through the local router), to remote client {self.peername}")
+
+                        udp_hole_punch_dst=( self.peername[0], UDP_HOLE_PUNCH_DST_PORT  )
+                        self.config.ACCESS_LOG and access_logger.debug(
+                            f"Sending UDP hole punch (breaking through the local router), to remote client { udp_hole_punch_dst }")
                         await loop.create_datagram_endpoint(
-                            lambda: HolePunchProtocol(self.peername),
+                            lambda: HolePunchProtocol( udp_hole_punch_dst ),
                             local_addr=('0.0.0.0', local_udp_port_bind),
                         )
 
