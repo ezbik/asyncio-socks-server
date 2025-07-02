@@ -351,7 +351,7 @@ class LocalTCP(asyncio.Protocol):
 
                         udp_hole_punch_dst=( self.peername[0], UDP_HOLE_PUNCH_DST_PORT  )
                         self.config.ACCESS_LOG and access_logger.debug(
-                            f"Sending UDP hole punch (breaking through the local router), to remote client { udp_hole_punch_dst }")
+                            f"Sending UDP hole punch (breaking through the local router), from local src port {local_udp_port_bind} to remote client { udp_hole_punch_dst }")
                         await loop.create_datagram_endpoint(
                             lambda: HolePunchProtocol( udp_hole_punch_dst ),
                             local_addr=('0.0.0.0', local_udp_port_bind),
