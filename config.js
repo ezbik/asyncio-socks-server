@@ -13,5 +13,5 @@
     "REWRITE_UDP_ASSOCIATE_IP_TO":  "5.252.21.210",
     "IP_MODE":      46,
     "CONE_NAT_FIX": true,
-    "MAX_CONNS":    1
+    "MAX_CONNS":    999
 }
