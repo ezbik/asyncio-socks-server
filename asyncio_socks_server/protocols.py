@@ -23,6 +23,7 @@ from asyncio_socks_server.utils import get_socks_atyp_from_host
 from asyncio_socks_server.values import SocksAtyp, SocksCommand, SocksRep
 import re
 import time
+import ipaddress
 
 UDP_HOLE_PUNCH_DST_PORT=999
 
@@ -105,9 +106,22 @@ def query(resolver, config, name) :
         print("DNS query error:", e)
 
 def acl(config, DST_ADDR):
-    for banned_dst in config.BANNED_DST :
-        if re.search(rf'\.?{banned_dst}$' , DST_ADDR):
-            return -1
+    try:
+        dst_ip = ipaddress.ip_address(DST_ADDR)
+    except ValueError:
+        dst_ip = None  # It's a domain, not an IP
+    for banned in config.BANNED_DST:
+        # Check if it's an IP network or address
+        try:
+            net = ipaddress.ip_network(banned, strict=False)
+            if dst_ip and dst_ip in net:
+                return -1
+        except ValueError:
+            # Not an IP, assume it's a domain pattern
+            if re.search(rf'^(|.+\.){banned}$', DST_ADDR, re.IGNORECASE) :
+                return -1
+    return 0  # Allowed
+
 
 class HolePunchProtocol(asyncio.DatagramProtocol):
     def __init__(self, peername):
