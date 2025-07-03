@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
     "MIN_PORT_UDP_ASSOCIATE": 0,
     "MAX_PORT_UDP_ASSOCIATE": 0,
     "CONE_NAT_FIX": False,
+    "IP_MODE":  46,
 }
 
 

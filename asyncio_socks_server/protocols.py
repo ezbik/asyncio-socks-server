@@ -77,13 +77,32 @@ DL=SpeedAnalyzer()
 UL=SpeedAnalyzer()
 
 
-def query(resolver, name, query_type):
+def query(resolver, config, name) :
     try:
-        answers = resolver.query(name, query_type)
-        for rdata in answers: 
-            return rdata.to_text()
+        ip_mode=config.IP_MODE
+        if ip_mode == 4:
+            query_types= ['A']
+        elif ip_mode == 6:
+            query_types= ['AAAA']
+        elif ip_mode == 46:
+            query_types= ['A' , 'AAAA']
+        elif ip_mode == 64:
+            query_types= [ 'AAAA', 'A' ]
+        else:
+            raise ValueError(f"Invalid IP_MODE: {ip_mode}")
+
+        answers = []
+
+        for query_type in query_types:
+            try:
+                answers = resolver.resolve(name, query_type)
+                for rdata in answers:
+                    return rdata.to_text()
+            except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
+                continue  # Try next query type
+      
     except Exception as e:
-        print(e)
+        print("DNS query error:", e)
 
 def acl(config, DST_ADDR):
     for banned_dst in config.BANNED_DST :
@@ -291,7 +310,7 @@ class LocalTCP(asyncio.Protocol):
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] resolving remote name {HNAME}'
                         )
-                        DST_ADDR = query(self.config.resolver, HNAME , 'A')
+                        DST_ADDR = query(self.config.resolver, self.config,  HNAME )
                         if not DST_ADDR:
                             raise CommandExecError("Can't resolve hostname {HNAME}")
                         self.config.ACCESS_LOG and access_logger.debug(
@@ -589,7 +608,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 self.config.ACCESS_LOG and access_logger.debug(
                     f'[UDP] resolving remote name {HNAME}'
                 )
-                DST_ADDR = query(self.config.resolver, HNAME , 'A')
+                DST_ADDR = query(self.config.resolver, self.config,  HNAME )
                 if not DST_ADDR:
                     raise HeaderParseError("Can't resolve hostname {HNAME}")
                 self.config.ACCESS_LOG and access_logger.debug(
