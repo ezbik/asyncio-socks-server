@@ -170,7 +170,7 @@ class LocalTCP(asyncio.Protocol):
         self.stage = self.STAGE_NEGOTIATE
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalTCP connection from {self.peername}. Remaining TCP conns limit: {self.semaphore._value}"
+            f"Made LocalTCP connection from {self.peername}. Remaining TCP conns limit: {self.semaphore._value -1 }"
         )
 
     @staticmethod
@@ -241,10 +241,12 @@ class LocalTCP(asyncio.Protocol):
             +----+-----+-------+------+----------+----------+
 
         """
+        #print(f"sema Remaining TCP conns limit before ACQ: {self.semaphore._value}" ,  id(self.semaphore) )
+        #print("sema acqing now",  id(self.semaphore) )
+        await self.semaphore.acquire()
+        #print(f"sema Remaining TCP conns limit after ACQ: {self.semaphore._value}" ,  id(self.semaphore) )
 
         try:
-            acquired = await self.semaphore.acquire()
-
             # Step 1.1
             # The client sends a version identifier/method selection message.
             VER, NMETHODS = await self.stream_reader.readexactly(2)
@@ -416,7 +418,7 @@ class LocalTCP(asyncio.Protocol):
             error_logger.warning(f"{e} during the negotiation with {self.peername}")
             self.close()
         finally:
-            self.semaphore.release()
+            pass
 
     def data_received(self, data):
         if self.stage == self.STAGE_NEGOTIATE:
@@ -457,6 +459,9 @@ class LocalTCP(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalTCP connection from {self.peername}"
         )
+        self.semaphore.release()
+        #print("sema released", id(  self.semaphore ) )
+        #print(f"sema Remaining TCP conns limit after RELEASE : {self.semaphore._value}" ,  id(self.semaphore) )
 
 
 class RemoteTCP(asyncio.Protocol):
