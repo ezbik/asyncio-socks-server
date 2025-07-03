@@ -290,7 +290,7 @@ class LocalTCP(asyncio.Protocol):
             USERNAME = await authenticator.authenticate()
 
             self.config.ACCESS_LOG and access_logger.info(
-                f'Authenticated user {USERNAME or "[no username specified]"} from {CLIENT_SRC_ADDR}'
+                f'Authenticated user {USERNAME or "[no username specified]"} from { self.transport.get_extra_info("peername")[:2] }'
             )
 
             # Step 2.1
