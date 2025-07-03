@@ -170,7 +170,7 @@ class LocalTCP(asyncio.Protocol):
         self.stage = self.STAGE_NEGOTIATE
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalTCP connection from {self.peername}"
+            f"Made LocalTCP connection from {self.peername}. Remaining TCP conns limit: {self.semaphore._value}"
         )
 
     @staticmethod
