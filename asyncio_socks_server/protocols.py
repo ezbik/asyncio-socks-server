@@ -135,7 +135,7 @@ class LocalTCP(asyncio.Protocol):
         self.is_closing = False
         self.__init_authenticator_cls()
         self.semaphore  = self.config.semaphore
-        print( self.semaphore )
+        #print( self.semaphore )
 
     def __init_authenticator_cls(self):
         for cls in AUTHENTICATORS_CLS_LIST:
