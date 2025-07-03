@@ -639,6 +639,8 @@ class LocalUDP(asyncio.DatagramProtocol):
                     f'[UDP] {HNAME} resolved to {DST_ADDR}'
                 )
             else:
+                if acl(self.config, DST_ADDR) == -1:
+                    raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
                 if self.config.DENY_RAW_IP_ADDRESSES == True:
                     raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
