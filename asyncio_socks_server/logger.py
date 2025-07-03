@@ -50,7 +50,7 @@ def gen_log_config(config: Config):
                 "class": "logging.Formatter",
             },
             "diagnostic": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d \n└─%(message)s\n",
+                "format": "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d | %(message)s",
                 "datefmt": "%Y-%m-%d %H:%M:%S %z",
                 "class": "logging.Formatter",
             },
