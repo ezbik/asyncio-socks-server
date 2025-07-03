@@ -61,7 +61,9 @@ class SocksServer:
         logger.info(
             f'Resolving hostnames via {self.config.RESOLVER or "OS resolver"}'
         )
-
+        logger.info(
+            f'Resolving preference {self.config.IP_MODE}'
+        )
         logger.info(
             f'Max download speed: {self.config.MAX_DL_SPEED or "Unlimited"} KB/s'
         )

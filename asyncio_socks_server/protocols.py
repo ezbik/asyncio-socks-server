@@ -312,7 +312,7 @@ class LocalTCP(asyncio.Protocol):
                         )
                         DST_ADDR = query(self.config.resolver, self.config,  HNAME )
                         if not DST_ADDR:
-                            raise CommandExecError("Can't resolve hostname {HNAME}")
+                            raise CommandExecError(f"Can't resolve hostname {HNAME}")
                         self.config.ACCESS_LOG and access_logger.debug(
                             f'[TCP] {HNAME} resolved to {DST_ADDR}'
                         )
@@ -321,7 +321,6 @@ class LocalTCP(asyncio.Protocol):
                             raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
-
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
                     )
@@ -341,9 +340,7 @@ class LocalTCP(asyncio.Protocol):
                     ) from None
                 else:
                     self.remote_tcp = remote_tcp
-                    bind_addr, bind_port = remote_tcp_transport.get_extra_info(
-                        "sockname"
-                    )
+                    bind_addr, bind_port = remote_tcp_transport.get_extra_info( "sockname")[:2]
                     self.transport.write(
                         self.gen_reply(SocksRep.SUCCEEDED, bind_addr, bind_port)
                     )
@@ -610,7 +607,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 )
                 DST_ADDR = query(self.config.resolver, self.config,  HNAME )
                 if not DST_ADDR:
-                    raise HeaderParseError("Can't resolve hostname {HNAME}")
+                    raise HeaderParseError(f"Can't resolve hostname {HNAME}")
                 self.config.ACCESS_LOG and access_logger.debug(
                     f'[UDP] {HNAME} resolved to {DST_ADDR}'
                 )
