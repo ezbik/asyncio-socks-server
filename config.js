@@ -13,5 +13,6 @@
     "REWRITE_UDP_ASSOCIATE_IP_TO":  "5.252.21.210",
     "IP_MODE":      46,
     "CONE_NAT_FIX": true,
+    "BANNED_DST":   ["bad.com", "127.0.0.1/8"],
     "MAX_CONNS":    999
 }
