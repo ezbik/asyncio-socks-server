@@ -134,6 +134,8 @@ class LocalTCP(asyncio.Protocol):
         self.negotiate_task = None
         self.is_closing = False
         self.__init_authenticator_cls()
+        self.semaphore  = self.config.semaphore
+        print( self.semaphore )
 
     def __init_authenticator_cls(self):
         for cls in AUTHENTICATORS_CLS_LIST:
@@ -241,6 +243,8 @@ class LocalTCP(asyncio.Protocol):
         """
 
         try:
+            acquired = await self.semaphore.acquire()
+
             # Step 1.1
             # The client sends a version identifier/method selection message.
             VER, NMETHODS = await self.stream_reader.readexactly(2)
@@ -411,6 +415,8 @@ class LocalTCP(asyncio.Protocol):
         except (SocksException, ConnectionError, ValueError) as e:
             error_logger.warning(f"{e} during the negotiation with {self.peername}")
             self.close()
+        finally:
+            self.semaphore.release()
 
     def data_received(self, data):
         if self.stage == self.STAGE_NEGOTIATE:

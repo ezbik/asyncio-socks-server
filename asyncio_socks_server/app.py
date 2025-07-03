@@ -67,6 +67,11 @@ class SocksServer:
         logger.info(
             f'Max download speed: {self.config.MAX_DL_SPEED or "Unlimited"} KB/s'
         )
+        logger.info(
+            f'Max connections: {self.config.MAX_CONNS}'
+        )
+
+        self.config.semaphore  = asyncio.Semaphore(self.config.MAX_CONNS )
 
         self.loop.run_forever()
         self.loop.close()
