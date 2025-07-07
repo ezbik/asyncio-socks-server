@@ -176,7 +176,7 @@ class LocalTCP(asyncio.Protocol):
             else:
                 self.transport.write(data)
 
-    def allow_new_connection(self):
+    def check_ratelimit_new_connection(self):
         if not self.config.RATE_LIMIT:
             return True
             
@@ -187,7 +187,6 @@ class LocalTCP(asyncio.Protocol):
         while self.connection_times and self.connection_times[0] < one_minute_ago:
             self.connection_times.popleft()
 
-        access_logger.debug( f'Connections/1min: {self.connection_times}')
         if len(self.connection_times) < self.config.RATE_LIMIT:
             self.connection_times.append(now)
             return True
@@ -198,6 +197,11 @@ class LocalTCP(asyncio.Protocol):
         self.peername = transport.get_extra_info("peername")
         self.stream_reader.set_transport(transport)
         loop = asyncio.get_event_loop()
+        if self.check_ratelimit_new_connection():
+            access_logger.debug( f'Connections/1min: {len( self.connection_times) }, {self.peername}')
+        else:
+            access_logger.debug( f'Connections/1min: {len( self.connection_times) }, {self.peername} OVER LIMIT')
+            self.transport.close()
         self.negotiate_task = loop.create_task(self.negotiate())
         self.stage = self.STAGE_NEGOTIATE
 
