@@ -75,6 +75,9 @@ class SocksServer:
         self.config.semaphore  = asyncio.Semaphore(self.config.MAX_CONNS )
 
         self.config.connection_times = deque()
+        logger.info(
+            f'Rate limit: {self.config.RATE_LIMIT} connections / 1 minute'
+        )
 
         self.loop.run_forever()
         self.loop.close()
