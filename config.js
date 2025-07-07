@@ -14,5 +14,6 @@
     "IP_MODE":      46,
     "CONE_NAT_FIX": true,
     "BANNED_DST":   ["bad.com", "127.0.0.1/8"],
+    "RATE_LIMIT":   50,
     "MAX_CONNS":    999
 }

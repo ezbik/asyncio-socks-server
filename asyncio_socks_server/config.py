@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
     "CONE_NAT_FIX": False,
     "MAX_CONNS":    1000,
     "IP_MODE":  46,
+    "RATE_LIMIT":  10000,       # num of new conns per 1 minute
 }
 
 

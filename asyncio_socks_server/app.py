@@ -3,6 +3,7 @@ import logging.config
 import signal
 from typing import Any, Optional, Union
 import platform
+from collections import deque
 
 from asyncio_socks_server.config import BASE_LOGO, SOCKS_SERVER_PREFIX, Config
 from asyncio_socks_server.logger import error_logger, gen_log_config, logger
@@ -72,6 +73,8 @@ class SocksServer:
         )
 
         self.config.semaphore  = asyncio.Semaphore(self.config.MAX_CONNS )
+
+        self.config.connection_times = deque()
 
         self.loop.run_forever()
         self.loop.close()

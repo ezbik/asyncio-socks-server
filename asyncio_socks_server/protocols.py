@@ -149,6 +149,7 @@ class LocalTCP(asyncio.Protocol):
         self.is_closing = False
         self.__init_authenticator_cls()
         self.semaphore  = self.config.semaphore
+        self.connection_times = self.config.connection_times
         #print( self.semaphore )
 
     def __init_authenticator_cls(self):
@@ -174,6 +175,23 @@ class LocalTCP(asyncio.Protocol):
                     self.transport.write(data)
             else:
                 self.transport.write(data)
+
+    def allow_new_connection(self):
+        if not self.config.RATE_LIMIT:
+            return True
+            
+        now = time.time()
+        one_minute_ago = now - 60
+
+        # Remove old timestamps
+        while self.connection_times and self.connection_times[0] < one_minute_ago:
+            self.connection_times.popleft()
+
+        access_logger.debug( f'Connections/1min: {self.connection_times}')
+        if len(self.connection_times) < self.config.RATE_LIMIT:
+            self.connection_times.append(now)
+            return True
+        return False
 
     def connection_made(self, transport):
         self.transport = transport
