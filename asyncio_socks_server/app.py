@@ -79,6 +79,9 @@ class SocksServer:
             f'Rate limit: {self.config.RATE_LIMIT} connections / 1 minute'
         )
 
+        if self.config.LDNS:
+            logger.info(f'LDNS listening on {self.config.LDNS}')
+
         self.loop.run_forever()
         self.loop.close()
 

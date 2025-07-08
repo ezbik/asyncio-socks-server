@@ -15,5 +15,6 @@
     "CONE_NAT_FIX": true,
     "BANNED_DST":   ["bad.com", "127.0.0.1/8"],
     "RATE_LIMIT":   5000,
+    "LDNS":         "127.0.0.127",
     "MAX_CONNS":    999
 }

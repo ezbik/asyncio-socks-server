@@ -359,10 +359,13 @@ class LocalTCP(asyncio.Protocol):
                             f'[TCP] {HNAME} resolved to {DST_ADDR}'
                         )
                     else:
-                        if self.config.DENY_RAW_IP_ADDRESSES == True:
-                            raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
-                        if acl(self.config, DST_ADDR) == -1:
-                            raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
+                        if self.config.LDNS == DST_ADDR and DST_PORT==53:
+                            pass
+                        else:
+                            if self.config.DENY_RAW_IP_ADDRESSES == True:
+                                raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
+                            if acl(self.config, DST_ADDR) == -1:
+                                raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
 
                     # Now DST_ADDR is Ipv4/Ipv6. 
                     task = loop.create_connection(
@@ -416,6 +419,10 @@ class LocalTCP(asyncio.Protocol):
                             lambda: HolePunchProtocol( udp_hole_punch_dst ),
                             local_addr=('0.0.0.0', local_udp_port_bind),
                         )
+
+                    if self.config.LDNS == DST_ADDR and DST_PORT==53 and self.config.RESOLVER :
+                        access_logger.debug(f"UDP redirected to the Resolver {self.config.RESOLVER}")
+                        DST_ADDR=self.config.RESOLVER
 
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
@@ -661,10 +668,13 @@ class LocalUDP(asyncio.DatagramProtocol):
                     f'[UDP] {HNAME} resolved to {DST_ADDR}'
                 )
             else:
-                if acl(self.config, DST_ADDR) == -1:
-                    raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
-                if self.config.DENY_RAW_IP_ADDRESSES == True:
-                    raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
+                if self.config.LDNS == DST_ADDR and DST_PORT==53:
+                    pass
+                else:
+                    if acl(self.config, DST_ADDR) == -1:
+                        raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
+                    if self.config.DENY_RAW_IP_ADDRESSES == True:
+                        raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
             if local_host_port not in self.remote_udp_table:
                 loop = asyncio.get_event_loop()
