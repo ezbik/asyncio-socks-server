@@ -347,17 +347,30 @@ class LocalTCP(asyncio.Protocol):
                     if ATYP == SocksAtyp.DOMAIN:
                         HNAME=DST_ADDR
 
-                        if acl(self.config, HNAME) == -1:
-                            raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
-                        self.config.ACCESS_LOG and access_logger.debug(
-                            f'[TCP] resolving remote name {HNAME}'
-                        )
-                        DST_ADDR = query(self.config.resolver, self.config,  HNAME )
-                        if not DST_ADDR:
-                            raise CommandExecError(f"Can't resolve hostname {HNAME}")
-                        self.config.ACCESS_LOG and access_logger.debug(
-                            f'[TCP] {HNAME} resolved to {DST_ADDR}'
-                        )
+                        if self.config.LDNS == DST_ADDR and DST_PORT==53:
+                            pass
+                        else:
+                            if acl(self.config, HNAME) == -1:
+                                raise NoAtypAllowed(f"ACL: Not allowed to call hostname {DST_ADDR}")
+
+                        try:
+                            dst_ip = ipaddress.ip_address(HNAME)
+                            already_ip=1
+                        except: 
+                            already_ip=0
+
+                        if already_ip:
+                            self.config.ACCESS_LOG and access_logger.debug(f'we are asked to resolve hostname {HNAME}  but it is already IP, Socks client bug?')
+                        else:
+                            self.config.ACCESS_LOG and access_logger.debug(
+                                f'[TCP] resolving remote name {HNAME}'
+                            )
+                            DST_ADDR = query(self.config.resolver, self.config,  HNAME )
+                            if not DST_ADDR:
+                                raise CommandExecError(f"Can't resolve hostname {HNAME}")
+                            self.config.ACCESS_LOG and access_logger.debug(
+                                f'[TCP] {HNAME} resolved to {DST_ADDR}'
+                            )
                     else:
                         if self.config.LDNS == DST_ADDR and DST_PORT==53:
                             pass
@@ -365,8 +378,13 @@ class LocalTCP(asyncio.Protocol):
                             if self.config.DENY_RAW_IP_ADDRESSES == True:
                                 raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
                             if acl(self.config, DST_ADDR) == -1:
-                                raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
+                                raise NoAtypAllowed(f"TCP ACL: Not allowed to call IP {DST_ADDR}")
 
+                    #print( [ self.config.LDNS, DST_ADDR, DST_PORT, self.config.RESOLVER ] )
+
+                    if self.config.LDNS == DST_ADDR and DST_PORT==53 and self.config.RESOLVER :
+                        access_logger.debug(f"TCP redirected to the Resolver {self.config.RESOLVER}")
+                        DST_ADDR=self.config.RESOLVER
                     # Now DST_ADDR is Ipv4/Ipv6. 
                     task = loop.create_connection(
                         lambda: RemoteTCP(self, self.config), DST_ADDR, DST_PORT
@@ -668,11 +686,12 @@ class LocalUDP(asyncio.DatagramProtocol):
                     f'[UDP] {HNAME} resolved to {DST_ADDR}'
                 )
             else:
+                #print([self.config.LDNS , DST_ADDR, DST_PORT ])
                 if self.config.LDNS == DST_ADDR and DST_PORT==53:
                     pass
                 else:
                     if acl(self.config, DST_ADDR) == -1:
-                        raise NoAtypAllowed(f"ACL: Not allowed to call IP {DST_ADDR}")
+                        raise NoAtypAllowed(f"UDP ACL: Not allowed to call IP {DST_ADDR}")
                     if self.config.DENY_RAW_IP_ADDRESSES == True:
                         raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
