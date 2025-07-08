@@ -1,4 +1,5 @@
 import json
+import re
 from os import environ as os_environ
 from re import findall as re_findall
 from socket import AF_INET, AF_INET6, inet_pton
@@ -104,5 +105,8 @@ def load_dict_from_json_file_location(location: str) -> dict:
         for env_var in env_vars_in_location:
             location = location.replace("${" + env_var + "}", os_environ[env_var])
 
-    with open(location) as f:
-        return json.loads(f.read())
+    with open(location, 'r') as f:
+        content = f.read()
+    # Remove single-line comments (//...)
+    content = re.sub(r'^\s*//.*$', '', content, flags=re.MULTILINE)
+    return json.loads(content)
