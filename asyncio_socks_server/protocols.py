@@ -438,9 +438,6 @@ class LocalTCP(asyncio.Protocol):
                             local_addr=('0.0.0.0', local_udp_port_bind),
                         )
 
-                    if self.config.LDNS == DST_ADDR and DST_PORT==53 and self.config.RESOLVER :
-                        access_logger.debug(f"UDP redirected to the Resolver {self.config.RESOLVER}")
-                        DST_ADDR=self.config.RESOLVER
 
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
@@ -671,6 +668,10 @@ class LocalUDP(asyncio.DatagramProtocol):
             self.config.ACCESS_LOG and access_logger.info(
                 f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
             )
+
+            if self.config.LDNS == DST_ADDR and DST_PORT==53 and self.config.RESOLVER :
+                access_logger.debug(f"UDP redirected to the Resolver {self.config.RESOLVER}")
+                DST_ADDR=self.config.RESOLVER
 
             if ATYP == SocksAtyp.DOMAIN:
                 HNAME=DST_ADDR
