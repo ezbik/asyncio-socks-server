@@ -173,6 +173,8 @@ asyncio_socks_server --strict
 
 * 2024-04-06 added Download speedlimit, whitelisted clients, domains ACL, custom DNS resolver
 
+* 2025-07-09 added Working behind a LAN router, connlimit, rate_limit, LDNS (resolver for a proxy client), IP_MODE (preference of ip4 or ipv6)
+
 ## Reference
 
 - [RFC1928](https://www.ietf.org/rfc/rfc1928.txt)
