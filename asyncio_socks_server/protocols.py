@@ -421,7 +421,7 @@ class LocalTCP(asyncio.Protocol):
                 )
                 try:
                     loop = asyncio.get_event_loop()
-                    if int(self.config.MIN_PORT_UDP_ASSOCIATE) and int(self.config.MAX_PORT_UDP_ASSOCIATE):
+                    if self.config.REWRITE_PORT_UDP_ASSOCIATE and int(self.config.MIN_PORT_UDP_ASSOCIATE) and int(self.config.MAX_PORT_UDP_ASSOCIATE):
                         local_udp_port_bind= find_free_udp_port( int(self.config.MIN_PORT_UDP_ASSOCIATE), int(self.config.MAX_PORT_UDP_ASSOCIATE) )
                     else:
                         local_udp_port_bind=0
@@ -429,7 +429,6 @@ class LocalTCP(asyncio.Protocol):
                         f"Chosen local UDP ASSOC port {local_udp_port_bind} for {self.peername}"
                     )
                     if self.config.CONE_NAT_FIX :
-
                         udp_hole_punch_dst=( self.peername[0], UDP_HOLE_PUNCH_DST_PORT  )
                         self.config.ACCESS_LOG and access_logger.debug(
                             f"Sending UDP hole punch (breaking through the local router), from local src port {local_udp_port_bind} to remote client { udp_hole_punch_dst }")
@@ -437,8 +436,6 @@ class LocalTCP(asyncio.Protocol):
                             lambda: HolePunchProtocol( udp_hole_punch_dst ),
                             local_addr=('0.0.0.0', local_udp_port_bind),
                         )
-
-
                     task = loop.create_datagram_endpoint(
                         lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
                         local_addr=("0.0.0.0", local_udp_port_bind),

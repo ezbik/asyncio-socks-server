@@ -8,9 +8,6 @@
     "USERS": {
         "alice": "cool"
     },
-    
-   
-  
     "IP_MODE":      46,
     "BANNED_DST":   ["bad.com", "127.0.0.1/8"],
     "RATE_LIMIT":   5000,
