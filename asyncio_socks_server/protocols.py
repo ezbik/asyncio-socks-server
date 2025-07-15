@@ -338,7 +338,7 @@ class LocalTCP(asyncio.Protocol):
             # The server handles the command and returns a reply.
             if CMD == SocksCommand.CONNECT:
                 self.config.ACCESS_LOG and access_logger.info(
-                    f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT}'
+                    f'Incoming Socks5 TCP request to {DST_ADDR}:{DST_PORT} from client {self.peername}'
                 )
 
                 try:
@@ -436,8 +436,9 @@ class LocalTCP(asyncio.Protocol):
                             lambda: HolePunchProtocol( udp_hole_punch_dst ),
                             local_addr=('0.0.0.0', local_udp_port_bind),
                         )
+                    client_id=self.peername[:2]
                     task = loop.create_datagram_endpoint(
-                        lambda: LocalUDP((DST_ADDR, DST_PORT), self.config),
+                        lambda: LocalUDP((DST_ADDR, DST_PORT), self.config, client_id),
                         local_addr=("0.0.0.0", local_udp_port_bind),
                     )
                     local_udp_transport, local_udp = await asyncio.wait_for(task, 5)
@@ -572,13 +573,14 @@ class RemoteTCP(asyncio.Protocol):
 
 
 class LocalUDP(asyncio.DatagramProtocol):
-    def __init__(self, host_port_limit: Tuple[str, int], config: Config):
+    def __init__(self, host_port_limit: Tuple[str, int], config: Config, client_id ):
         self.host_port_limit = host_port_limit
         self.config = config
         self.transport = None
         self.sockname = None
         self.remote_udp_table = {}
         self.is_closing = False
+        self.client_id=client_id
 
     def write(self, data, port_addr):
         if not self.transport.is_closing():
@@ -663,7 +665,7 @@ class LocalUDP(asyncio.DatagramProtocol):
             ) = self.parse_udp_request_header(data)
 
             self.config.ACCESS_LOG and access_logger.info(
-                f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT}'
+                f'Incoming Socks5 UDP request to {DST_ADDR}:{DST_PORT} from client {self.client_id}'
             )
 
             if self.config.LDNS == DST_ADDR and DST_PORT==53 and self.config.RESOLVER :

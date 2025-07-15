@@ -4,7 +4,7 @@
     "AUTH_METHOD": 2,
     "ACCESS_LOG": true,
     "STRICT": false,
-    "DEBUG": true,
+    "DEBUG": false,
     "USERS": {
         "alice": "cool"
     },
