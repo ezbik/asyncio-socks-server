@@ -281,10 +281,14 @@ class LocalTCP(asyncio.Protocol):
         #print("sema acqing now",  id(self.max_conns_semaphore) )
 
         try:
-            await asyncio.wait_for( self.max_conns_semaphore.acquire() , timeout=2)
+            await asyncio.wait_for( self.max_conns_semaphore.acquire() , timeout=3)
         except asyncio.TimeoutError:
-            # could not wait till we fit in allowed max_conns
-            raise CommandExecError("Max Conns reached")
+            self.config.ACCESS_LOG and access_logger.info(
+                f"MAX_CONNS {self.config.MAX_CONNS} reached, closed connection."
+                f"{self.peername}"
+                )
+            self.close(no_release_sema=True)
+
         #print(f"sema Remaining TCP conns limit after ACQ: {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
 
         try:
@@ -508,7 +512,7 @@ class LocalTCP(asyncio.Protocol):
     def connection_lost(self, exc: Optional[Exception]) -> None:
         self.close()
 
-    def close(self):
+    def close(self, no_release_sema=False ):
         if self.is_closing:
             return
         self.stage = self.STAGE_DESTROY
@@ -522,7 +526,11 @@ class LocalTCP(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalTCP connection from {self.peername}"
         )
-        self.max_conns_semaphore.release()
+        if no_release_sema:
+            pass
+            #print('close with NO sema release')
+        else:
+            self.max_conns_semaphore.release()
         #print("sema released", id(  self.max_conns_semaphore ) )
         #print(f"sema Remaining TCP conns limit after RELEASE : {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
 
