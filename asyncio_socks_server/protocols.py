@@ -279,7 +279,12 @@ class LocalTCP(asyncio.Protocol):
         """
         #print(f"sema Remaining TCP conns limit before ACQ: {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
         #print("sema acqing now",  id(self.max_conns_semaphore) )
-        await self.max_conns_semaphore.acquire()
+
+        try:
+            await asyncio.wait_for( self.max_conns_semaphore.acquire() , timeout=2)
+        except asyncio.TimeoutError:
+            # could not wait till we fit in allowed max_conns
+            raise CommandExecError("Max Conns reached")
         #print(f"sema Remaining TCP conns limit after ACQ: {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
 
         try:
