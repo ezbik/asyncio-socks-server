@@ -148,9 +148,9 @@ class LocalTCP(asyncio.Protocol):
         self.negotiate_task = None
         self.is_closing = False
         self.__init_authenticator_cls()
-        self.semaphore  = self.config.semaphore
+        self.max_conns_semaphore  = self.config.max_conns_semaphore
         self.connection_times = self.config.connection_times
-        #print( self.semaphore )
+        #print( self.max_conns_semaphore )
 
     def __init_authenticator_cls(self):
         for cls in AUTHENTICATORS_CLS_LIST:
@@ -206,7 +206,7 @@ class LocalTCP(asyncio.Protocol):
         self.stage = self.STAGE_NEGOTIATE
 
         self.config.ACCESS_LOG and access_logger.debug(
-            f"Made LocalTCP connection from {self.peername}. Remaining TCP conns limit: {self.semaphore._value -1 }"
+            f"Made LocalTCP connection from {self.peername}. Remaining TCP conns limit: {self.max_conns_semaphore._value -1 }"
         )
 
     @staticmethod
@@ -277,10 +277,10 @@ class LocalTCP(asyncio.Protocol):
             +----+-----+-------+------+----------+----------+
 
         """
-        #print(f"sema Remaining TCP conns limit before ACQ: {self.semaphore._value}" ,  id(self.semaphore) )
-        #print("sema acqing now",  id(self.semaphore) )
-        await self.semaphore.acquire()
-        #print(f"sema Remaining TCP conns limit after ACQ: {self.semaphore._value}" ,  id(self.semaphore) )
+        #print(f"sema Remaining TCP conns limit before ACQ: {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
+        #print("sema acqing now",  id(self.max_conns_semaphore) )
+        await self.max_conns_semaphore.acquire()
+        #print(f"sema Remaining TCP conns limit after ACQ: {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
 
         try:
             # Step 1.1
@@ -517,9 +517,9 @@ class LocalTCP(asyncio.Protocol):
         self.config.ACCESS_LOG and access_logger.debug(
             f"Closed LocalTCP connection from {self.peername}"
         )
-        self.semaphore.release()
-        #print("sema released", id(  self.semaphore ) )
-        #print(f"sema Remaining TCP conns limit after RELEASE : {self.semaphore._value}" ,  id(self.semaphore) )
+        self.max_conns_semaphore.release()
+        #print("sema released", id(  self.max_conns_semaphore ) )
+        #print(f"sema Remaining TCP conns limit after RELEASE : {self.max_conns_semaphore._value}" ,  id(self.max_conns_semaphore) )
 
 
 class RemoteTCP(asyncio.Protocol):

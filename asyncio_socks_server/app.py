@@ -72,7 +72,7 @@ class SocksServer:
             f'Max connections: {self.config.MAX_CONNS}'
         )
 
-        self.config.semaphore  = asyncio.Semaphore(self.config.MAX_CONNS )
+        self.config.max_conns_semaphore  = asyncio.Semaphore(self.config.MAX_CONNS )
 
         self.config.connection_times = deque()
         logger.info(
