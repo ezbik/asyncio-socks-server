@@ -99,7 +99,8 @@ async def query(resolver, config, name) :
             try:
                 res = await asyncio.wait_for( resolver.query_dns( name, query_type) , timeout=DNS_TIMEOUT)
                 for record  in res.answer:
-                    return record.data.addr
+                    if record.type==1:
+                        return record.data.addr
             except asyncio.TimeoutError:
                 print(f'!!EXCEPTION!! timeout resolving {name} {query_type} through {config.resolver.nameservers}')
             except Exception as e : # (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
