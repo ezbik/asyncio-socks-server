@@ -99,7 +99,8 @@ def query(resolver, config, name) :
                 answers = resolver.resolve(name, query_type)
                 for rdata in answers:
                     return rdata.to_text()
-            except: # (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
+            except Exception as e : # (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
+                print(f'!!EXCEPTION!! while resolving {name} {query_type}: {e}')
                 continue  # Try next query type
       
     except Exception as e:
