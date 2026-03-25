@@ -78,7 +78,7 @@ DL=SpeedAnalyzer()
 UL=SpeedAnalyzer()
 
 
-def query(resolver, config, name) :
+async def query(resolver, config, name) :
     try:
         ip_mode=config.IP_MODE
         if ip_mode == 4:
@@ -96,9 +96,9 @@ def query(resolver, config, name) :
 
         for query_type in query_types:
             try:
-                answers = resolver.resolve(name, query_type)
-                for rdata in answers:
-                    return rdata.to_text()
+                res = await resolver.query_dns( name, query_type)
+                for record  in res.answer:
+                    return record.data.addr
             except Exception as e : # (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
                 print(f'!!EXCEPTION!! while resolving {name} {query_type}: {e}')
                 continue  # Try next query type
@@ -375,7 +375,7 @@ class LocalTCP(asyncio.Protocol):
                             self.config.ACCESS_LOG and access_logger.debug(
                                 f'[TCP] resolving remote name {HNAME}'
                             )
-                            DST_ADDR = query(self.config.resolver, self.config,  HNAME )
+                            DST_ADDR = await query(self.config.resolver, self.config,  HNAME )
                             if not DST_ADDR:
                                 raise CommandExecError(f"Can't resolve hostname {HNAME}")
                             self.config.ACCESS_LOG and access_logger.debug(
@@ -693,7 +693,7 @@ class LocalUDP(asyncio.DatagramProtocol):
                 self.config.ACCESS_LOG and access_logger.debug(
                     f'[UDP] resolving remote name {HNAME}'
                 )
-                DST_ADDR = query(self.config.resolver, self.config,  HNAME )
+                DST_ADDR = await query(self.config.resolver, self.config,  HNAME )
                 if not DST_ADDR:
                     raise HeaderParseError(f"Can't resolve hostname {HNAME}")
                 self.config.ACCESS_LOG and access_logger.debug(
