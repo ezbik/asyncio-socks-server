@@ -8,4 +8,4 @@ test work on limited number of open files (prevent logs flood)
 2026-02-25
  [x] own accept loop (fix exceptions of accepting sockets under file limits).
 2026-03-25
- [ ] migrate DNS resolver to `aiodns`
+ [ ] [dev__aiodns] migrate DNS resolver to `aiodns`
