@@ -7,3 +7,5 @@ test work on limited number of open files (prevent logs flood)
  [x] close connection after MAX_CONNS reached.
 2026-02-25
  [x] own accept loop (fix exceptions of accepting sockets under file limits).
+2026-03-25
+ [ ] migrate DNS resolver to `aiodns`
