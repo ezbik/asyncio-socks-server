@@ -26,6 +26,7 @@ import time
 import ipaddress
 
 UDP_HOLE_PUNCH_DST_PORT=999
+DNS_TIMEOUT=4
 
 def find_free_udp_port(start, end):
     ports = list(range(start, end))
@@ -96,9 +97,11 @@ async def query(resolver, config, name) :
 
         for query_type in query_types:
             try:
-                res = await resolver.query_dns( name, query_type)
+                res = await asyncio.wait_for( resolver.query_dns( name, query_type) , timeout=DNS_TIMEOUT)
                 for record  in res.answer:
                     return record.data.addr
+            except asyncio.TimeoutError:
+                print(f'!!EXCEPTION!! timeout resolving {name} {query_type} through {config.resolver.nameservers}')
             except Exception as e : # (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout):
                 print(f'!!EXCEPTION!! while resolving {name} {query_type}: {e}')
                 continue  # Try next query type
