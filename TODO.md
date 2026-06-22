@@ -9,3 +9,5 @@ test work on limited number of open files (prevent logs flood)
  [x] own accept loop (fix exceptions of accepting sockets under file limits).
 2026-03-25
  [ ] [dev__aiodns] migrate DNS resolver to `aiodns`
+2026-06-22
+ [x] UDP Ipv6 fixed.
