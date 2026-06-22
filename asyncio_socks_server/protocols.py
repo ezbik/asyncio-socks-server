@@ -784,7 +784,7 @@ class RemoteUDP(asyncio.DatagramProtocol):
         """
 
         RSV, FRAG = b"\x00\x00", b"\x00"
-        remote_host, remote_port = remote_host_port
+        remote_host, remote_port = remote_host_port[:2]
         ATYP = get_socks_atyp_from_host(remote_host)
         if ATYP == SocksAtyp.IPV4:
             DST_ADDR = inet_pton(AF_INET, remote_host)
