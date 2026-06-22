@@ -714,6 +714,10 @@ class LocalUDP(asyncio.DatagramProtocol):
                         raise NoAtypAllowed(f"ACL: triggered DENY_RAW_IP_ADDRESSES, not allowed to call raw IP {DST_ADDR}")
 
             if local_host_port not in self.remote_udp_table:
+                if ipaddress.ip_address(DST_ADDR).version==4:
+                    laddr = ("0.0.0.0", 0)
+                else: 
+                    laddr = ("::", 0)
                 loop = asyncio.get_event_loop()
                 task = loop.create_datagram_endpoint(
                     lambda: RemoteUDP(self, local_host_port, self.config),
@@ -784,7 +788,7 @@ class RemoteUDP(asyncio.DatagramProtocol):
         """
 
         RSV, FRAG = b"\x00\x00", b"\x00"
-        remote_host, remote_port = remote_host_port
+        remote_host, remote_port = remote_host_port[:2]
         ATYP = get_socks_atyp_from_host(remote_host)
         if ATYP == SocksAtyp.IPV4:
             DST_ADDR = inet_pton(AF_INET, remote_host)
